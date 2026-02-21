@@ -5,9 +5,9 @@ import { ParsedReceipt } from "@/lib/types";
 const RECEIPT_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["currency", "items", "taxCents", "tipCents"],
+  required: ["restaurantName", "currency", "items", "taxCents", "tipCents"],
   properties: {
-    restaurantName: { type: "string" },
+    restaurantName: { type: ["string", "null"] },
     currency: { type: "string" },
     taxCents: { type: "integer", minimum: 0 },
     tipCents: { type: "integer", minimum: 0 },

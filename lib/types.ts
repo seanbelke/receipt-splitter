@@ -5,7 +5,7 @@ export type ParsedReceiptItem = {
 };
 
 export type ParsedReceipt = {
-  restaurantName?: string;
+  restaurantName?: string | null;
   currency: string;
   items: ParsedReceiptItem[];
   taxCents: number;
