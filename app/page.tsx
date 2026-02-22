@@ -695,10 +695,27 @@ export default function HomePage() {
         <button
           type="submit"
           disabled={!file || isParsing}
-          className="primary-btn inline-flex items-center gap-2 px-5 py-3"
+          aria-busy={isParsing}
+          className="primary-btn parse-receipt-btn inline-flex items-center gap-2 px-5 py-3"
         >
-          <UploadIcon />
-          {isParsing ? "Parsing receipt..." : "Parse receipt"}
+          {isParsing ? (
+            <>
+              <span className="loading-spinner" aria-hidden="true" />
+              <span className="inline-flex items-center">
+                Parsing receipt
+                <span className="loading-dots" aria-hidden="true">
+                  <span>.</span>
+                  <span>.</span>
+                  <span>.</span>
+                </span>
+              </span>
+            </>
+          ) : (
+            <>
+              <UploadIcon />
+              Parse receipt
+            </>
+          )}
         </button>
       </form>
     );
