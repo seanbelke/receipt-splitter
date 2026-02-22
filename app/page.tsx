@@ -9,11 +9,11 @@ import {
   useState,
 } from "react";
 import {
-  calculateTotals,
+  calculateSplitBreakdown,
   expandItemsToUnits,
   moneyFromCents,
 } from "@/lib/split";
-import { AssignableUnit, ParsedReceipt } from "@/lib/types";
+import { AssignableUnit, ParsedReceipt, SplitBreakdown } from "@/lib/types";
 
 type Step = "upload" | "people" | "assign" | "results";
 type AssignMode = "byItem" | "byPerson";
@@ -58,6 +58,237 @@ function ResultIcon({ className = "h-4 w-4" }: IconProps) {
   );
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function buildHtmlReport(params: {
+  generatedAtIso: string;
+  receipt: ParsedReceipt;
+  breakdown: SplitBreakdown;
+  overallSubtotal: number;
+  taxCents: number;
+  tipCents: number;
+}): string {
+  const { generatedAtIso, receipt, breakdown, overallSubtotal, taxCents, tipCents } = params;
+  const overallTotal = overallSubtotal + taxCents + tipCents;
+  const generatedAt = new Date(generatedAtIso).toLocaleString();
+
+  const receiptRows = receipt.items
+    .map(
+      (item) =>
+        `<tr>
+          <td>${escapeHtml(item.name)}</td>
+          <td>${item.quantity}</td>
+          <td class="mono">$${moneyFromCents(item.totalPriceCents)}</td>
+        </tr>`,
+    )
+    .join("");
+
+  const unitRows = breakdown.unitAllocations
+    .map((unit) => {
+      const assigned =
+        unit.assignedPeople.length > 0
+          ? unit.assignedPeople.map((name) => escapeHtml(name)).join(", ")
+          : "Unassigned";
+      const splitMath =
+        unit.perPersonShares.length > 0
+          ? unit.perPersonShares
+              .map(
+                (share) =>
+                  `${escapeHtml(share.name)}: $${moneyFromCents(share.amountCents)}`,
+              )
+              .join(" + ")
+          : "Excluded from split (no assignees)";
+      return `<tr>
+        <td>${escapeHtml(unit.label)}</td>
+        <td class="mono">$${moneyFromCents(unit.amountCents)}</td>
+        <td>${assigned}</td>
+        <td>${splitMath}</td>
+      </tr>`;
+    })
+    .join("");
+
+  const personRows = breakdown.personTotals
+    .map(
+      (person) => `<tr>
+        <td>${escapeHtml(person.name)}</td>
+        <td class="mono">$${moneyFromCents(person.subtotalCents)}</td>
+        <td class="mono">$${moneyFromCents(person.taxShareCents)}</td>
+        <td class="mono">$${moneyFromCents(person.tipShareCents)}</td>
+        <td class="mono strong">$${moneyFromCents(person.totalCents)}</td>
+      </tr>`,
+    )
+    .join("");
+
+  const taxShareRows = breakdown.taxShares
+    .map(
+      (share) =>
+        `<tr><td>${escapeHtml(share.name)}</td><td class="mono">$${moneyFromCents(share.amountCents)}</td></tr>`,
+    )
+    .join("");
+
+  const tipShareRows = breakdown.tipShares
+    .map(
+      (share) =>
+        `<tr><td>${escapeHtml(share.name)}</td><td class="mono">$${moneyFromCents(share.amountCents)}</td></tr>`,
+    )
+    .join("");
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Receipt Split Report</title>
+  <style>
+    :root { color-scheme: light; }
+    body {
+      margin: 0;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      color: #0f172a;
+      background: #f8fafc;
+      line-height: 1.4;
+      padding: 32px;
+    }
+    .report {
+      max-width: 980px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #dbeafe;
+      border-radius: 14px;
+      padding: 24px;
+    }
+    h1, h2 { margin: 0 0 8px 0; }
+    h1 { font-size: 26px; }
+    h2 { font-size: 20px; margin-top: 28px; }
+    p { margin: 6px 0; }
+    .meta { color: #334155; font-size: 14px; }
+    .mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
+    .strong { font-weight: 700; }
+    .actions { margin-top: 12px; }
+    .print-btn {
+      border: 1px solid #0f766e;
+      background: #0f766e;
+      color: white;
+      border-radius: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid #e2e8f0;
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #f1f5f9;
+      font-weight: 600;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 800px) {
+      body { padding: 10px; }
+      .report { padding: 14px; }
+      .grid { grid-template-columns: 1fr; }
+    }
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+      .report {
+        border: none;
+        border-radius: 0;
+        max-width: none;
+      }
+      .actions { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="report">
+    <h1>Receipt Split Report</h1>
+    <p class="meta">Generated: ${escapeHtml(generatedAt)}</p>
+    <p class="meta">Currency: ${escapeHtml(receipt.currency)}</p>
+    ${receipt.restaurantName ? `<p class="meta">Restaurant: ${escapeHtml(receipt.restaurantName)}</p>` : ""}
+    <div class="actions"><button class="print-btn" onclick="window.print()">Print report</button></div>
+
+    <h2>Totals</h2>
+    <p class="mono">Subtotal: $${moneyFromCents(overallSubtotal)}</p>
+    <p class="mono">Tax: $${moneyFromCents(taxCents)}</p>
+    <p class="mono">Tip: $${moneyFromCents(tipCents)}</p>
+    <p class="mono strong">Total: $${moneyFromCents(overallTotal)}</p>
+
+    <h2>Line Items</h2>
+    <table>
+      <thead>
+        <tr><th>Item</th><th>Qty</th><th>Row Total</th></tr>
+      </thead>
+      <tbody>${receiptRows}</tbody>
+    </table>
+
+    <h2>Unit-Level Math</h2>
+    <p class="meta">Each unit is split evenly among assigned people, then rounded to cents deterministically.</p>
+    <table>
+      <thead>
+        <tr><th>Unit</th><th>Amount</th><th>Assigned People</th><th>Split Math</th></tr>
+      </thead>
+      <tbody>${unitRows}</tbody>
+    </table>
+
+    <h2>Tax and Tip Apportionment</h2>
+    <p class="meta">Tax and tip are apportioned by each person's food subtotal using weighted rounding.</p>
+    <div class="grid">
+      <div>
+        <h3>Tax Shares</h3>
+        <table>
+          <thead><tr><th>Person</th><th>Tax Share</th></tr></thead>
+          <tbody>${taxShareRows}</tbody>
+        </table>
+      </div>
+      <div>
+        <h3>Tip Shares</h3>
+        <table>
+          <thead><tr><th>Person</th><th>Tip Share</th></tr></thead>
+          <tbody>${tipShareRows}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <h2>Final Amounts</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Person</th>
+          <th>Food Subtotal</th>
+          <th>Tax Share</th>
+          <th>Tip Share</th>
+          <th>Total Owed</th>
+        </tr>
+      </thead>
+      <tbody>${personRows}</tbody>
+    </table>
+  </div>
+</body>
+</html>`;
+}
+
 export default function HomePage() {
   const [step, setStep] = useState<Step>("upload");
   const [file, setFile] = useState<File | null>(null);
@@ -73,6 +304,7 @@ export default function HomePage() {
   const [tipCents, setTipCents] = useState(0);
   const [isParsing, setIsParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reportHtmlPreview, setReportHtmlPreview] = useState<string | null>(null);
   const [assignPanelHeight, setAssignPanelHeight] = useState<number | null>(
     null,
   );
@@ -92,12 +324,12 @@ export default function HomePage() {
     [units, assignments],
   );
 
-  const totals = useMemo(() => {
+  const breakdown = useMemo(() => {
     if (step !== "results" || people.length === 0 || units.length === 0) {
-      return [];
+      return null;
     }
 
-    return calculateTotals({
+    return calculateSplitBreakdown({
       people,
       units,
       assignments,
@@ -105,6 +337,10 @@ export default function HomePage() {
       tipCents,
     });
   }, [step, people, units, assignments, taxCents, tipCents]);
+
+  const totals = useMemo(() => {
+    return breakdown?.personTotals ?? [];
+  }, [breakdown]);
 
   const overallSubtotal = useMemo(
     () => units.reduce((sum, unit) => sum + unit.amountCents, 0),
@@ -351,6 +587,77 @@ export default function HomePage() {
       return 0;
     }
     return Math.round(numeric * 100);
+  }
+
+  function makeHtmlReport(): string | null {
+    if (!receipt || !breakdown) {
+      return null;
+    }
+
+    return buildHtmlReport({
+      generatedAtIso: new Date().toISOString(),
+      receipt,
+      breakdown,
+      overallSubtotal,
+      taxCents,
+      tipCents,
+    });
+  }
+
+  function openHtmlReportPreview() {
+    const html = makeHtmlReport();
+    if (!html) {
+      return;
+    }
+    setError(null);
+    setReportHtmlPreview(html);
+  }
+
+  function printHtmlReport() {
+    const html = makeHtmlReport();
+    if (!html) {
+      return;
+    }
+
+    const frame = document.createElement("iframe");
+    frame.style.position = "fixed";
+    frame.style.right = "0";
+    frame.style.bottom = "0";
+    frame.style.width = "0";
+    frame.style.height = "0";
+    frame.style.border = "0";
+    frame.style.visibility = "hidden";
+    document.body.appendChild(frame);
+
+    const cleanup = () => {
+      frame.remove();
+    };
+
+    frame.onload = () => {
+      const printWindow = frame.contentWindow;
+      if (!printWindow) {
+        cleanup();
+        setError("Could not print report.");
+        return;
+      }
+
+      printWindow.focus();
+      printWindow.print();
+      printWindow.onafterprint = cleanup;
+      window.setTimeout(cleanup, 1500);
+    };
+
+    const printDoc = frame.contentDocument;
+    if (!printDoc) {
+      cleanup();
+      setError("Could not print report.");
+      return;
+    }
+
+    setError(null);
+    printDoc.open();
+    printDoc.write(html);
+    printDoc.close();
   }
 
   function renderUploadStep() {
@@ -815,6 +1122,20 @@ export default function HomePage() {
           <p className="mono text-sm text-slate-700">
             Tip: ${moneyFromCents(tipCents)}
           </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              onClick={openHtmlReportPreview}
+              className="secondary-btn px-4 py-2"
+            >
+              View HTML report
+            </button>
+            <button
+              onClick={printHtmlReport}
+              className="secondary-btn px-4 py-2"
+            >
+              Print report
+            </button>
+          </div>
         </div>
 
         <div className="grid gap-3">
@@ -894,6 +1215,35 @@ export default function HomePage() {
         {step === "assign" && renderAssignStep()}
         {step === "results" && renderResultsStep()}
       </section>
+
+      {reportHtmlPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-3 sm:p-6">
+          <div className="w-full max-w-6xl rounded-2xl bg-white p-3 shadow-2xl sm:p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-medium text-slate-700">HTML report preview</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={printHtmlReport}
+                  className="secondary-btn px-3 py-2 text-sm"
+                >
+                  Print
+                </button>
+                <button
+                  onClick={() => setReportHtmlPreview(null)}
+                  className="secondary-btn px-3 py-2 text-sm"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <iframe
+              title="Receipt split report preview"
+              srcDoc={reportHtmlPreview}
+              className="h-[72vh] w-full rounded-xl border border-slate-200 bg-white"
+            />
+          </div>
+        </div>
+      )}
     </main>
   );
 }

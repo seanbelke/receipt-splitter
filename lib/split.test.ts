@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calculateTotals, expandItemsToUnits, moneyFromCents } from "./split.ts";
+import {
+  calculateSplitBreakdown,
+  calculateTotals,
+  expandItemsToUnits,
+  moneyFromCents
+} from "./split.ts";
 import type { ParsedReceipt } from "./types.ts";
 
 test("moneyFromCents formats cents as a two-decimal currency string", () => {
@@ -125,5 +130,71 @@ test("calculateTotals falls back to equal split for tax/tip when all subtotals a
       tipShareCents: 0,
       totalCents: 1,
     },
+  ]);
+});
+
+test("calculateSplitBreakdown returns per-unit math details and person shares", () => {
+  const breakdown = calculateSplitBreakdown({
+    people: ["Bob", "Alice"],
+    units: [
+      { id: "u1", label: "Nachos", amountCents: 101, sourceItemName: "Nachos", sourceRowIndex: 0, unitIndex: 0 },
+      { id: "u2", label: "Fries", amountCents: 300, sourceItemName: "Fries", sourceRowIndex: 1, unitIndex: 0 },
+    ],
+    assignments: {
+      u1: ["Alice", "Bob"],
+      u2: [],
+    },
+    taxCents: 1,
+    tipCents: 1,
+  });
+
+  assert.deepEqual(breakdown.personTotals, [
+    {
+      name: "Alice",
+      subtotalCents: 51,
+      taxShareCents: 1,
+      tipShareCents: 1,
+      totalCents: 53,
+    },
+    {
+      name: "Bob",
+      subtotalCents: 50,
+      taxShareCents: 0,
+      tipShareCents: 0,
+      totalCents: 50,
+    },
+  ]);
+
+  assert.deepEqual(breakdown.unitAllocations, [
+    {
+      unitId: "u1",
+      label: "Nachos",
+      amountCents: 101,
+      assignedPeople: ["Alice", "Bob"],
+      perPersonShares: [
+        { name: "Alice", amountCents: 51 },
+        { name: "Bob", amountCents: 50 },
+      ],
+    },
+    {
+      unitId: "u2",
+      label: "Fries",
+      amountCents: 300,
+      assignedPeople: [],
+      perPersonShares: [],
+    },
+  ]);
+
+  assert.deepEqual(breakdown.subtotalShares, [
+    { name: "Alice", amountCents: 51 },
+    { name: "Bob", amountCents: 50 },
+  ]);
+  assert.deepEqual(breakdown.taxShares, [
+    { name: "Alice", amountCents: 1 },
+    { name: "Bob", amountCents: 0 },
+  ]);
+  assert.deepEqual(breakdown.tipShares, [
+    { name: "Alice", amountCents: 1 },
+    { name: "Bob", amountCents: 0 },
   ]);
 });

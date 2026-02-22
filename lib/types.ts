@@ -28,3 +28,24 @@ export type PersonTotal = {
   tipShareCents: number;
   totalCents: number;
 };
+
+export type NamedCents = {
+  name: string;
+  amountCents: number;
+};
+
+export type UnitAllocationBreakdown = {
+  unitId: string;
+  label: string;
+  amountCents: number;
+  assignedPeople: string[];
+  perPersonShares: NamedCents[];
+};
+
+export type SplitBreakdown = {
+  personTotals: PersonTotal[];
+  unitAllocations: UnitAllocationBreakdown[];
+  subtotalShares: NamedCents[];
+  taxShares: NamedCents[];
+  tipShares: NamedCents[];
+};
