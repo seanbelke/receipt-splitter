@@ -16,12 +16,14 @@ import {
 } from "@/lib/split";
 import { AssignableUnit, ParsedReceipt, SplitBreakdown } from "@/lib/types";
 
-type Step = "upload" | "people" | "assign" | "results";
+type Step = "setup" | "assign" | "results";
 type AssignMode = "byItem" | "byPerson";
 
 function stepIndex(step: Step): number {
-  return { upload: 1, people: 2, assign: 3, results: 4 }[step];
+  return { setup: 1, assign: 2, results: 3 }[step];
 }
+
+const STEP_ORDER: Step[] = ["setup", "assign", "results"];
 
 type IconProps = { className?: string };
 
@@ -372,7 +374,7 @@ function buildHtmlReport(params: {
 }
 
 export default function HomePage() {
-  const [step, setStep] = useState<Step>("upload");
+  const [step, setStep] = useState<Step>("setup");
   const [file, setFile] = useState<File | null>(null);
   const [receipt, setReceipt] = useState<ParsedReceipt | null>(null);
   const [units, setUnits] = useState<AssignableUnit[]>([]);
@@ -513,7 +515,21 @@ export default function HomePage() {
 
   function onFileChange(event: ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files?.[0] ?? null;
+    const changedFile =
+      (selected && !file) ||
+      (!selected && !!file) ||
+      (selected &&
+        file &&
+        (selected.name !== file.name || selected.size !== file.size));
     setFile(selected);
+    if (changedFile) {
+      setReceipt(null);
+      setUnits([]);
+      setAssignments({});
+      setTaxCents(0);
+      setTipCents(0);
+      setStep("setup");
+    }
     if (!selected) {
       setIsImagePreviewOpen(false);
     }
@@ -522,6 +538,12 @@ export default function HomePage() {
 
   function removeSelectedFile() {
     setFile(null);
+    setReceipt(null);
+    setUnits([]);
+    setAssignments({});
+    setTaxCents(0);
+    setTipCents(0);
+    setStep("setup");
     setIsImagePreviewOpen(false);
     setError(null);
     if (fileInputRef.current) {
@@ -529,8 +551,7 @@ export default function HomePage() {
     }
   }
 
-  async function parseReceipt(event: FormEvent) {
-    event.preventDefault();
+  async function startReceiptParse() {
     if (!file) {
       setError("Choose a receipt image first.");
       return;
@@ -539,6 +560,15 @@ export default function HomePage() {
     try {
       setIsParsing(true);
       setError(null);
+      setStep("setup");
+      setReceipt(null);
+      setUnits([]);
+      setAssignments({});
+      setTaxCents(0);
+      setTipCents(0);
+      setCurrentUnitIndex(0);
+      setCurrentPersonIndex(0);
+      setAssignMode("byItem");
 
       const formData = new FormData();
       formData.append("receipt", file);
@@ -560,17 +590,16 @@ export default function HomePage() {
       setUnits(expanded);
       setTaxCents(parsed.taxCents);
       setTipCents(parsed.tipCents);
-      setAssignments({});
-      setPeople([]);
-      setCurrentUnitIndex(0);
-      setCurrentPersonIndex(0);
-      setAssignMode("byItem");
-      setStep("people");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to parse receipt.");
     } finally {
       setIsParsing(false);
     }
+  }
+
+  async function parseReceipt(event: FormEvent) {
+    event.preventDefault();
+    await startReceiptParse();
   }
 
   function addPerson() {
@@ -790,9 +819,9 @@ export default function HomePage() {
     printDoc.close();
   }
 
-  function renderUploadStep() {
+  function renderSetupStep() {
     return (
-      <form onSubmit={parseReceipt} className="space-y-6">
+      <div className="space-y-7">
         <div>
           <p className="step-kicker flex items-center gap-2">
             <span className="icon-badge">
@@ -800,172 +829,160 @@ export default function HomePage() {
             </span>
             Step 1
           </p>
-          <h1 className="mt-2 text-4xl font-semibold leading-tight">
-            Upload a receipt photo.
-          </h1>
-          <p className="mt-3 text-sm text-slate-600">
-            We will parse line items, quantity rows, tax, and tip so you can
-            quickly assign who ate each item.
-          </p>
-        </div>
-
-        <label className="block rounded-2xl border border-dashed border-slate-400/70 bg-white/90 p-6">
-          <span className="mb-2 block text-sm font-medium text-slate-700">
-            Receipt Image
-          </span>
-          <input
-            ref={fileInputRef}
-            id="receipt-image-input"
-            type="file"
-            accept="image/*"
-            onChange={onFileChange}
-            className="sr-only"
-          />
-          <div className="mt-2 flex flex-wrap items-center gap-3">
-            <label
-              htmlFor="receipt-image-input"
-              className="file-picker-btn inline-flex cursor-pointer items-center gap-2 px-4 py-2 text-sm font-semibold"
-            >
-              <UploadIcon />
-              {file ? "Replace file" : "Choose file"}
-            </label>
-            <span className="text-sm text-slate-500">
-              {file ? file.name : "No file selected"}
-            </span>
-          </div>
-          <p className="mt-2 text-xs text-slate-500">
-            Supported formats: JPG, PNG, HEIC, and most mobile photo types.
-          </p>
-        </label>
-
-        {file && selectedImageUrl && (
-          <div className="soft-card flex items-center justify-between gap-2 rounded-xl p-2 sm:p-3">
-            <button
-              type="button"
-              onClick={() => setIsImagePreviewOpen(true)}
-              className="group flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1.5 text-left transition hover:bg-slate-100/80"
-            >
-              <span className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white">
-                <Image
-                  src={selectedImageUrl}
-                  alt={`Selected receipt image: ${file.name}`}
-                  width={56}
-                  height={56}
-                  unoptimized
-                  className="h-full w-full object-cover"
-                />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  Selected image
-                </span>
-                <span className="mt-0.5 block truncate text-sm font-medium text-slate-900">
-                  {file.name}
-                </span>
-                <span className="mono mt-1 inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                  {Math.round(file.size / 1024)} KB
-                </span>
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={removeSelectedFile}
-              aria-label="Remove selected image"
-              title="Remove selected image"
-              className="secondary-btn shrink-0 p-2.5 text-slate-600"
-            >
-              <TrashIcon />
-            </button>
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={!file || isParsing}
-          aria-busy={isParsing}
-          className="primary-btn parse-receipt-btn inline-flex items-center gap-2 px-5 py-3"
-        >
-          {isParsing ? (
-            <>
-              <span className="loading-spinner" aria-hidden="true" />
-              <span className="inline-flex items-center">
-                Parsing receipt
-                <span className="loading-dots" aria-hidden="true">
-                  <span>.</span>
-                  <span>.</span>
-                  <span>.</span>
-                </span>
-              </span>
-            </>
-          ) : (
-            <>
-              <UploadIcon />
-              Parse receipt
-            </>
-          )}
-        </button>
-      </form>
-    );
-  }
-
-  function renderPeopleStep() {
-    if (!receipt) {
-      return null;
-    }
-
-    return (
-      <div className="space-y-7">
-        <div>
-          <p className="step-kicker flex items-center gap-2">
-            <span className="icon-badge">
-              <UsersIcon />
-            </span>
-            Step 2
-          </p>
           <h2 className="mt-2 text-3xl font-semibold">
-            Add everyone at the table.
+            Upload a receipt and add everyone.
           </h2>
         </div>
 
+        <form onSubmit={parseReceipt} className="space-y-4">
+          <label className="block rounded-2xl border border-dashed border-slate-400/70 bg-white/90 p-6">
+            <span className="mb-2 block text-sm font-medium text-slate-700">
+              Receipt image
+            </span>
+            <input
+              ref={fileInputRef}
+              id="receipt-image-input"
+              type="file"
+              accept="image/*"
+              onChange={onFileChange}
+              className="sr-only"
+            />
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <label
+                htmlFor="receipt-image-input"
+                className="file-picker-btn inline-flex cursor-pointer items-center gap-2 px-4 py-2 text-sm font-semibold"
+              >
+                <UploadIcon />
+                {file ? "Replace file" : "Choose file"}
+              </label>
+              <span className="text-sm text-slate-500">
+                {file ? file.name : "No file selected"}
+              </span>
+            </div>
+            <p className="mt-2 text-xs text-slate-500">
+              Supported formats: JPG, PNG, HEIC, and most mobile photo types.
+            </p>
+          </label>
+
+          {file && selectedImageUrl && (
+            <div className="soft-card flex items-center justify-between gap-2 rounded-xl p-2 sm:p-3">
+              <button
+                type="button"
+                onClick={() => setIsImagePreviewOpen(true)}
+                className="group flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1.5 text-left transition hover:bg-slate-100/80"
+              >
+                <span className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                  <Image
+                    src={selectedImageUrl}
+                    alt={`Selected receipt image: ${file.name}`}
+                    width={56}
+                    height={56}
+                    unoptimized
+                    className="h-full w-full object-cover"
+                  />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Selected image
+                  </span>
+                  <span className="mt-0.5 block truncate text-sm font-medium text-slate-900">
+                    {file.name}
+                  </span>
+                  <span className="mono mt-1 inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                    {Math.round(file.size / 1024)} KB
+                  </span>
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={removeSelectedFile}
+                aria-label="Remove selected image"
+                title="Remove selected image"
+                className="secondary-btn shrink-0 p-2.5 text-slate-600"
+              >
+                <TrashIcon />
+              </button>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={!file || isParsing}
+            aria-busy={isParsing}
+            className="primary-btn parse-receipt-btn inline-flex items-center gap-2 px-5 py-3"
+          >
+            {isParsing ? (
+              <>
+                <span className="loading-spinner" aria-hidden="true" />
+                <span className="inline-flex items-center">
+                  Parsing receipt
+                  <span className="loading-dots" aria-hidden="true">
+                    <span>.</span>
+                    <span>.</span>
+                    <span>.</span>
+                  </span>
+                </span>
+              </>
+            ) : (
+              <>
+                <UploadIcon />
+                Parse receipt
+              </>
+            )}
+          </button>
+        </form>
+
         <div className="soft-card rounded-2xl p-5">
-          <p className="text-sm text-slate-700">
-            Parsed {receipt.items.length} rows into {units.length} assignable
-            units. Currency: {receipt.currency}.
-          </p>
-          <div className="mt-3 space-y-1 text-sm text-slate-600">
-            <p>Subtotal: ${moneyFromCents(overallSubtotal)}</p>
-            <p>Tax: ${moneyFromCents(taxCents)}</p>
-            <p>Tip: ${moneyFromCents(tipCents)}</p>
-          </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <label className="text-sm font-medium text-slate-700">
-              Tax ($)
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                defaultValue={moneyFromCents(taxCents)}
-                onChange={(e) => setTaxCents(toCents(e.target.value))}
-                className="input-field mt-1"
-              />
-            </label>
-            <label className="text-sm font-medium text-slate-700">
-              Tip ($)
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                defaultValue={moneyFromCents(tipCents)}
-                onChange={(e) => setTipCents(toCents(e.target.value))}
-                className="input-field mt-1"
-              />
-            </label>
-          </div>
+          {receipt ? (
+            <>
+              <p className="text-sm text-slate-700">
+                Parsed {receipt.items.length} rows into {units.length}{" "}
+                assignable units. Currency: {receipt.currency}.
+              </p>
+              <div className="mt-3 space-y-1 text-sm text-slate-600">
+                <p>Subtotal: ${moneyFromCents(overallSubtotal)}</p>
+                <p>Tax: ${moneyFromCents(taxCents)}</p>
+                <p>Tip: ${moneyFromCents(tipCents)}</p>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <label className="text-sm font-medium text-slate-700">
+                  Tax ($)
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={(taxCents / 100).toFixed(2)}
+                    onChange={(e) => setTaxCents(toCents(e.target.value))}
+                    className="input-field mt-1"
+                  />
+                </label>
+                <label className="text-sm font-medium text-slate-700">
+                  Tip ($)
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={(tipCents / 100).toFixed(2)}
+                    onChange={(e) => setTipCents(toCents(e.target.value))}
+                    className="input-field mt-1"
+                  />
+                </label>
+              </div>
+            </>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-slate-700">
+                {isParsing
+                  ? "Parsing receipt in the background. You can add everyone'snames now."
+                  : "Receipt has not been parsed yet. Choose a photo and parse when ready."}
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="soft-card rounded-2xl p-5">
           <p className="mb-3 text-sm text-slate-700">
-            People (names must be unique):
+            People involved (names must be unique):
           </p>
           <div className="flex flex-wrap gap-2">
             {people.map((person) => (
@@ -1005,17 +1022,40 @@ export default function HomePage() {
 
         <button
           onClick={() => setStep("assign")}
-          disabled={people.length === 0}
+          disabled={people.length === 0 || !receipt || isParsing}
           className="primary-btn inline-flex items-center gap-2 px-5 py-3"
         >
           <AssignIcon />
-          Start assigning items
+          {receipt ? "Start assigning items" : "Waiting for parsed receipt"}
         </button>
       </div>
     );
   }
 
   function renderAssignStep() {
+    if (!receipt || units.length === 0) {
+      return (
+        <div className="space-y-4">
+          <p className="step-kicker flex items-center gap-2">
+            <span className="icon-badge">
+              <AssignIcon />
+            </span>
+            Step 3
+          </p>
+          <h2 className="text-3xl font-semibold">Assign each item.</h2>
+          <p className="text-sm text-slate-700">
+            Wait for receipt parsing to finish before assigning items.
+          </p>
+          <button
+            onClick={() => setStep("setup")}
+            className="secondary-btn px-4 py-2"
+          >
+            Back to setup
+          </button>
+        </div>
+      );
+    }
+
     if (people.length === 0) {
       return (
         <div className="space-y-4">
@@ -1030,10 +1070,10 @@ export default function HomePage() {
             Add at least one person before assigning items.
           </p>
           <button
-            onClick={() => setStep("people")}
+            onClick={() => setStep("setup")}
             className="secondary-btn px-4 py-2"
           >
-            Back to people
+            Back to setup
           </button>
         </div>
       );
@@ -1379,29 +1419,36 @@ export default function HomePage() {
           Receipt Splitter
         </p>
         <p className="mt-1 text-sm text-slate-700">
-          Progress: Step {stepIndex(step)} of 4
+          Progress: Step {stepIndex(step)} of 3
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
-          {(["upload", "people", "assign", "results"] as Step[]).map(
-            (stepName) => {
-              const isCurrent = stepName === step;
-              const isDone = stepIndex(stepName) < stepIndex(step);
-              return (
-                <div
-                  key={stepName}
-                  className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${
-                    isCurrent
-                      ? "bg-teal-700 text-white"
-                      : isDone
-                        ? "bg-teal-100 text-teal-900"
-                        : "bg-slate-200/70 text-slate-600"
-                  }`}
-                >
-                  {stepName}
-                </div>
-              );
-            },
-          )}
+          {STEP_ORDER.map((stepName) => {
+            const isCurrent = stepName === step;
+            const isDone = stepIndex(stepName) < stepIndex(step);
+            const canGoToStep = isDone;
+            return (
+              <button
+                key={stepName}
+                type="button"
+                onClick={() => {
+                  if (canGoToStep) {
+                    setStep(stepName);
+                  }
+                }}
+                aria-current={isCurrent ? "step" : undefined}
+                disabled={!canGoToStep && !isCurrent}
+                className={`rounded-full px-3 py-1 text-xs font-medium capitalize transition ${
+                  isCurrent
+                    ? "bg-teal-700 text-white"
+                    : isDone
+                      ? "bg-teal-100 text-teal-900 hover:bg-teal-200"
+                      : "bg-slate-200/70 text-slate-600"
+                } ${!canGoToStep && !isCurrent ? "cursor-not-allowed" : ""}`}
+              >
+                {stepName}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -1411,8 +1458,7 @@ export default function HomePage() {
             {error}
           </p>
         )}
-        {step === "upload" && renderUploadStep()}
-        {step === "people" && renderPeopleStep()}
+        {step === "setup" && renderSetupStep()}
         {step === "assign" && renderAssignStep()}
         {step === "results" && renderResultsStep()}
       </section>
