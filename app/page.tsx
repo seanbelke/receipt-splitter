@@ -23,6 +23,8 @@ function stepIndex(step: Step): number {
   return { setup: 1, assign: 2, results: 3 }[step];
 }
 
+const STEP_ORDER: Step[] = ["setup", "assign", "results"];
+
 type IconProps = { className?: string };
 
 function UploadIcon({ className = "h-4 w-4" }: IconProps) {
@@ -1420,22 +1422,31 @@ export default function HomePage() {
           Progress: Step {stepIndex(step)} of 3
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
-          {(["setup", "assign", "results"] as Step[]).map((stepName) => {
+          {STEP_ORDER.map((stepName) => {
             const isCurrent = stepName === step;
             const isDone = stepIndex(stepName) < stepIndex(step);
+            const canGoToStep = isDone;
             return (
-              <div
+              <button
                 key={stepName}
-                className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${
+                type="button"
+                onClick={() => {
+                  if (canGoToStep) {
+                    setStep(stepName);
+                  }
+                }}
+                aria-current={isCurrent ? "step" : undefined}
+                disabled={!canGoToStep && !isCurrent}
+                className={`rounded-full px-3 py-1 text-xs font-medium capitalize transition ${
                   isCurrent
                     ? "bg-teal-700 text-white"
                     : isDone
-                      ? "bg-teal-100 text-teal-900"
+                      ? "bg-teal-100 text-teal-900 hover:bg-teal-200"
                       : "bg-slate-200/70 text-slate-600"
-                }`}
+                } ${!canGoToStep && !isCurrent ? "cursor-not-allowed" : ""}`}
               >
                 {stepName}
-              </div>
+              </button>
             );
           })}
         </div>
