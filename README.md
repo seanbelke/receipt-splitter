@@ -4,11 +4,11 @@ Basic full-stack app for splitting restaurant receipts when one person pays.
 
 ## Usage
 
-1. Upload a receipt image
-2. Parse line items with GPT-5 vision via OpenAI API
-3. Add people (unique names required)
-4. Assign each item unit to one or more people
-5. Auto-calculate what each person owes, including proportional tax and tip
+1. Upload a receipt image.
+2. Parse line items with OpenAI API.
+3. Add the names of everyone involved.
+4. Assign each item unit to one or more people.
+5. Auto-calculate what each person owes, including proportional tax and tip.
 
 ## Tech
 
