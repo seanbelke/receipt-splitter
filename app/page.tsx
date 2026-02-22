@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
   ChangeEvent,
   FormEvent,
@@ -103,6 +104,30 @@ function ResultIcon({ className = "h-4 w-4" }: IconProps) {
         strokeLinecap="round"
         strokeLinejoin="round"
         d="M7 13h10M7 9h6m-6 8h8M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"
+      />
+    </svg>
+  );
+}
+
+function TrashIcon({ className = "h-4 w-4" }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      className={className}
+    >
+      <path
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4 7h16M9 7V5h6v2m-7 4v6m4-6v6m4-6v6"
+      />
+      <path
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M6 7l1 12h10l1-12"
       />
     </svg>
   );
@@ -361,12 +386,15 @@ export default function HomePage() {
   const [tipCents, setTipCents] = useState(0);
   const [isParsing, setIsParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
+  const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
   const [reportHtmlPreview, setReportHtmlPreview] = useState<string | null>(
     null,
   );
   const [assignPanelHeight, setAssignPanelHeight] = useState<number | null>(
     null,
   );
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const newPersonInputRef = useRef<HTMLInputElement>(null);
   const assignContentPanelRef = useRef<HTMLDivElement>(null);
 
@@ -419,6 +447,37 @@ export default function HomePage() {
   }, [people.length]);
 
   useEffect(() => {
+    if (!file) {
+      setSelectedImageUrl(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setSelectedImageUrl(objectUrl);
+
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [file]);
+
+  useEffect(() => {
+    if (!isImagePreviewOpen) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsImagePreviewOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isImagePreviewOpen]);
+
+  useEffect(() => {
     if (
       step !== "assign" ||
       typeof window === "undefined" ||
@@ -455,7 +514,19 @@ export default function HomePage() {
   function onFileChange(event: ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files?.[0] ?? null;
     setFile(selected);
+    if (!selected) {
+      setIsImagePreviewOpen(false);
+    }
     setError(null);
+  }
+
+  function removeSelectedFile() {
+    setFile(null);
+    setIsImagePreviewOpen(false);
+    setError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   }
 
   async function parseReceipt(event: FormEvent) {
@@ -743,6 +814,7 @@ export default function HomePage() {
             Receipt Image
           </span>
           <input
+            ref={fileInputRef}
             id="receipt-image-input"
             type="file"
             accept="image/*"
@@ -766,16 +838,44 @@ export default function HomePage() {
           </p>
         </label>
 
-        {file && (
-          <div className="soft-card flex items-center justify-between gap-3 rounded-xl px-4 py-3">
-            <p className="flex min-w-0 items-center gap-2 text-sm text-slate-700">
-              <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-              <span className="font-medium">Selected</span>
-              <span className="truncate text-slate-900">{file.name}</span>
-            </p>
-            <span className="mono shrink-0 rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-600">
-              {Math.round(file.size / 1024)} KB
-            </span>
+        {file && selectedImageUrl && (
+          <div className="soft-card flex items-center justify-between gap-2 rounded-xl p-2 sm:p-3">
+            <button
+              type="button"
+              onClick={() => setIsImagePreviewOpen(true)}
+              className="group flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1.5 text-left transition hover:bg-slate-100/80"
+            >
+              <span className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                <Image
+                  src={selectedImageUrl}
+                  alt={`Selected receipt image: ${file.name}`}
+                  width={56}
+                  height={56}
+                  unoptimized
+                  className="h-full w-full object-cover"
+                />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Selected image
+                </span>
+                <span className="mt-0.5 block truncate text-sm font-medium text-slate-900">
+                  {file.name}
+                </span>
+                <span className="mono mt-1 inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                  {Math.round(file.size / 1024)} KB
+                </span>
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={removeSelectedFile}
+              aria-label="Remove selected image"
+              title="Remove selected image"
+              className="secondary-btn shrink-0 p-2.5 text-slate-600"
+            >
+              <TrashIcon />
+            </button>
           </div>
         )}
 
@@ -1343,6 +1443,39 @@ export default function HomePage() {
               title="Receipt split report preview"
               srcDoc={reportHtmlPreview}
               className="h-[72vh] w-full rounded-xl border border-slate-200 bg-white"
+            />
+          </div>
+        </div>
+      )}
+
+      {isImagePreviewOpen && selectedImageUrl && file && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/75 p-3 sm:p-6"
+          onClick={() => setIsImagePreviewOpen(false)}
+        >
+          <div
+            className="w-full max-w-4xl rounded-2xl bg-white p-3 shadow-2xl sm:p-4"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="truncate text-sm font-medium text-slate-700">
+                {file.name}
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsImagePreviewOpen(false)}
+                className="secondary-btn px-3 py-2 text-sm"
+              >
+                Close
+              </button>
+            </div>
+            <Image
+              src={selectedImageUrl}
+              alt={`Full-size selected receipt image: ${file.name}`}
+              width={1600}
+              height={2200}
+              unoptimized
+              className="max-h-[78vh] w-full rounded-xl border border-slate-200 bg-slate-50 object-contain"
             />
           </div>
         </div>
