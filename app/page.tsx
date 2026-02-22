@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useMemo, useRef, useState } from "react";
 import { calculateTotals, expandItemsToUnits, moneyFromCents } from "@/lib/split";
 import { AssignableUnit, ParsedReceipt } from "@/lib/types";
 
@@ -23,6 +23,7 @@ export default function HomePage() {
   const [tipCents, setTipCents] = useState(0);
   const [isParsing, setIsParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const newPersonInputRef = useRef<HTMLInputElement>(null);
 
   const currentUnit = units[currentUnitIndex];
   const currentAssignedPeople = currentUnit ? assignments[currentUnit.id] ?? [] : [];
@@ -99,18 +100,26 @@ export default function HomePage() {
   function addPerson() {
     const trimmed = newPerson.trim();
     if (!trimmed) {
+      newPersonInputRef.current?.focus();
       return;
     }
 
     const duplicate = people.some((person) => person.toLowerCase() === trimmed.toLowerCase());
     if (duplicate) {
       setError("Names must be unique (case-insensitive).");
+      newPersonInputRef.current?.focus();
       return;
     }
 
     setPeople((prev) => [...prev, trimmed]);
     setNewPerson("");
     setError(null);
+    newPersonInputRef.current?.focus();
+  }
+
+  function onAddPersonSubmit(event: FormEvent) {
+    event.preventDefault();
+    addPerson();
   }
 
   function removePerson(name: string) {
@@ -268,17 +277,18 @@ export default function HomePage() {
             {people.length === 0 && <p className="text-sm text-gray-500">No people added yet.</p>}
           </div>
 
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <form onSubmit={onAddPersonSubmit} className="mt-4 flex flex-col gap-2 sm:flex-row">
             <input
+              ref={newPersonInputRef}
               value={newPerson}
               onChange={(e) => setNewPerson(e.target.value)}
               placeholder="Add a name"
               className="flex-1 rounded-lg border border-gray-300 px-3 py-2"
             />
-            <button onClick={addPerson} className="rounded-lg border border-teal-700 px-4 py-2 text-teal-800 hover:bg-teal-50">
+            <button type="submit" className="rounded-lg border border-teal-700 px-4 py-2 text-teal-800 hover:bg-teal-50">
               Add person
             </button>
-          </div>
+          </form>
         </div>
 
         <button
