@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
   ChangeEvent,
   FormEvent,
@@ -26,34 +27,108 @@ type IconProps = { className?: string };
 
 function UploadIcon({ className = "h-4 w-4" }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
-      <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0 4 4m-4-4-4 4M5 14.5v3A2.5 2.5 0 0 0 7.5 20h9a2.5 2.5 0 0 0 2.5-2.5v-3" />
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      className={className}
+    >
+      <path
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 16V4m0 0 4 4m-4-4-4 4M5 14.5v3A2.5 2.5 0 0 0 7.5 20h9a2.5 2.5 0 0 0 2.5-2.5v-3"
+      />
     </svg>
   );
 }
 
 function UsersIcon({ className = "h-4 w-4" }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
-      <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1m18 0v-1a4 4 0 0 0-3-3.87M9.5 7a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm8 1a3 3 0 0 1 0 6" />
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      className={className}
+    >
+      <path
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1m18 0v-1a4 4 0 0 0-3-3.87M9.5 7a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm8 1a3 3 0 0 1 0 6"
+      />
     </svg>
   );
 }
 
 function AssignIcon({ className = "h-4 w-4" }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
-      <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M15.5 8.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z" />
-      <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M4.5 19v-1a4.5 4.5 0 0 1 4.5-4.5h4.5" />
-      <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="m16.5 15.5 2 2 3.5-4" />
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      className={className}
+    >
+      <path
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15.5 8.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z"
+      />
+      <path
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4.5 19v-1a4.5 4.5 0 0 1 4.5-4.5h4.5"
+      />
+      <path
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="m16.5 15.5 2 2 3.5-4"
+      />
     </svg>
   );
 }
 
 function ResultIcon({ className = "h-4 w-4" }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
-      <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M7 13h10M7 9h6m-6 8h8M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" />
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      className={className}
+    >
+      <path
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M7 13h10M7 9h6m-6 8h8M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"
+      />
+    </svg>
+  );
+}
+
+function TrashIcon({ className = "h-4 w-4" }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      className={className}
+    >
+      <path
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4 7h16M9 7V5h6v2m-7 4v6m4-6v6m4-6v6"
+      />
+      <path
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M6 7l1 12h10l1-12"
+      />
     </svg>
   );
 }
@@ -75,7 +150,14 @@ function buildHtmlReport(params: {
   taxCents: number;
   tipCents: number;
 }): string {
-  const { generatedAtIso, receipt, breakdown, overallSubtotal, taxCents, tipCents } = params;
+  const {
+    generatedAtIso,
+    receipt,
+    breakdown,
+    overallSubtotal,
+    taxCents,
+    tipCents,
+  } = params;
   const overallTotal = overallSubtotal + taxCents + tipCents;
   const generatedAt = new Date(generatedAtIso).toLocaleString();
 
@@ -304,10 +386,15 @@ export default function HomePage() {
   const [tipCents, setTipCents] = useState(0);
   const [isParsing, setIsParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [reportHtmlPreview, setReportHtmlPreview] = useState<string | null>(null);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
+  const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
+  const [reportHtmlPreview, setReportHtmlPreview] = useState<string | null>(
+    null,
+  );
   const [assignPanelHeight, setAssignPanelHeight] = useState<number | null>(
     null,
   );
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const newPersonInputRef = useRef<HTMLInputElement>(null);
   const assignContentPanelRef = useRef<HTMLDivElement>(null);
 
@@ -360,6 +447,37 @@ export default function HomePage() {
   }, [people.length]);
 
   useEffect(() => {
+    if (!file) {
+      setSelectedImageUrl(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setSelectedImageUrl(objectUrl);
+
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [file]);
+
+  useEffect(() => {
+    if (!isImagePreviewOpen) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsImagePreviewOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isImagePreviewOpen]);
+
+  useEffect(() => {
     if (
       step !== "assign" ||
       typeof window === "undefined" ||
@@ -396,7 +514,19 @@ export default function HomePage() {
   function onFileChange(event: ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files?.[0] ?? null;
     setFile(selected);
+    if (!selected) {
+      setIsImagePreviewOpen(false);
+    }
     setError(null);
+  }
+
+  function removeSelectedFile() {
+    setFile(null);
+    setIsImagePreviewOpen(false);
+    setError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   }
 
   async function parseReceipt(event: FormEvent) {
@@ -681,24 +811,98 @@ export default function HomePage() {
 
         <label className="block rounded-2xl border border-dashed border-slate-400/70 bg-white/90 p-6">
           <span className="mb-2 block text-sm font-medium text-slate-700">
-            Receipt Image (jpg, png, etc.)
+            Receipt Image
           </span>
-          <input type="file" accept="image/*" onChange={onFileChange} />
+          <input
+            ref={fileInputRef}
+            id="receipt-image-input"
+            type="file"
+            accept="image/*"
+            onChange={onFileChange}
+            className="sr-only"
+          />
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <label
+              htmlFor="receipt-image-input"
+              className="file-picker-btn inline-flex cursor-pointer items-center gap-2 px-4 py-2 text-sm font-semibold"
+            >
+              <UploadIcon />
+              {file ? "Replace file" : "Choose file"}
+            </label>
+            <span className="text-sm text-slate-500">
+              {file ? file.name : "No file selected"}
+            </span>
+          </div>
+          <p className="mt-2 text-xs text-slate-500">
+            Supported formats: JPG, PNG, HEIC, and most mobile photo types.
+          </p>
         </label>
 
-        {file && (
-          <p className="mono rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            Selected: {file.name} ({Math.round(file.size / 1024)} KB)
-          </p>
+        {file && selectedImageUrl && (
+          <div className="soft-card flex items-center justify-between gap-2 rounded-xl p-2 sm:p-3">
+            <button
+              type="button"
+              onClick={() => setIsImagePreviewOpen(true)}
+              className="group flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1.5 text-left transition hover:bg-slate-100/80"
+            >
+              <span className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                <Image
+                  src={selectedImageUrl}
+                  alt={`Selected receipt image: ${file.name}`}
+                  width={56}
+                  height={56}
+                  unoptimized
+                  className="h-full w-full object-cover"
+                />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Selected image
+                </span>
+                <span className="mt-0.5 block truncate text-sm font-medium text-slate-900">
+                  {file.name}
+                </span>
+                <span className="mono mt-1 inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                  {Math.round(file.size / 1024)} KB
+                </span>
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={removeSelectedFile}
+              aria-label="Remove selected image"
+              title="Remove selected image"
+              className="secondary-btn shrink-0 p-2.5 text-slate-600"
+            >
+              <TrashIcon />
+            </button>
+          </div>
         )}
 
         <button
           type="submit"
           disabled={!file || isParsing}
-          className="primary-btn inline-flex items-center gap-2 px-5 py-3"
+          aria-busy={isParsing}
+          className="primary-btn parse-receipt-btn inline-flex items-center gap-2 px-5 py-3"
         >
-          <UploadIcon />
-          {isParsing ? "Parsing receipt..." : "Parse receipt"}
+          {isParsing ? (
+            <>
+              <span className="loading-spinner" aria-hidden="true" />
+              <span className="inline-flex items-center">
+                Parsing receipt
+                <span className="loading-dots" aria-hidden="true">
+                  <span>.</span>
+                  <span>.</span>
+                  <span>.</span>
+                </span>
+              </span>
+            </>
+          ) : (
+            <>
+              <UploadIcon />
+              Parse receipt
+            </>
+          )}
         </button>
       </form>
     );
@@ -1140,10 +1344,7 @@ export default function HomePage() {
 
         <div className="grid gap-3">
           {totals.map((person) => (
-            <div
-              key={person.name}
-              className="soft-card rounded-2xl p-5"
-            >
+            <div key={person.name} className="soft-card rounded-2xl p-5">
               <h3 className="text-xl font-semibold">{person.name}</h3>
               <p className="mono mt-2 text-sm">
                 Food: ${moneyFromCents(person.subtotalCents)}
@@ -1220,7 +1421,9 @@ export default function HomePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-3 sm:p-6">
           <div className="w-full max-w-6xl rounded-2xl bg-white p-3 shadow-2xl sm:p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-medium text-slate-700">HTML report preview</p>
+              <p className="text-sm font-medium text-slate-700">
+                HTML report preview
+              </p>
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={printHtmlReport}
@@ -1240,6 +1443,39 @@ export default function HomePage() {
               title="Receipt split report preview"
               srcDoc={reportHtmlPreview}
               className="h-[72vh] w-full rounded-xl border border-slate-200 bg-white"
+            />
+          </div>
+        </div>
+      )}
+
+      {isImagePreviewOpen && selectedImageUrl && file && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/75 p-3 sm:p-6"
+          onClick={() => setIsImagePreviewOpen(false)}
+        >
+          <div
+            className="w-full max-w-4xl rounded-2xl bg-white p-3 shadow-2xl sm:p-4"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="truncate text-sm font-medium text-slate-700">
+                {file.name}
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsImagePreviewOpen(false)}
+                className="secondary-btn px-3 py-2 text-sm"
+              >
+                Close
+              </button>
+            </div>
+            <Image
+              src={selectedImageUrl}
+              alt={`Full-size selected receipt image: ${file.name}`}
+              width={1600}
+              height={2200}
+              unoptimized
+              className="max-h-[78vh] w-full rounded-xl border border-slate-200 bg-slate-50 object-contain"
             />
           </div>
         </div>
