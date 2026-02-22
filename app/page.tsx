@@ -1,10 +1,11 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useMemo, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { calculateTotals, expandItemsToUnits, moneyFromCents } from "@/lib/split";
 import { AssignableUnit, ParsedReceipt } from "@/lib/types";
 
 type Step = "upload" | "people" | "assign" | "results";
+type AssignMode = "byItem" | "byPerson";
 
 function stepIndex(step: Step): number {
   return { upload: 1, people: 2, assign: 3, results: 4 }[step];
@@ -18,6 +19,8 @@ export default function HomePage() {
   const [people, setPeople] = useState<string[]>([]);
   const [newPerson, setNewPerson] = useState("");
   const [currentUnitIndex, setCurrentUnitIndex] = useState(0);
+  const [currentPersonIndex, setCurrentPersonIndex] = useState(0);
+  const [assignMode, setAssignMode] = useState<AssignMode>("byItem");
   const [assignments, setAssignments] = useState<Record<string, string[]>>({});
   const [taxCents, setTaxCents] = useState(0);
   const [tipCents, setTipCents] = useState(0);
@@ -27,6 +30,7 @@ export default function HomePage() {
 
   const currentUnit = units[currentUnitIndex];
   const currentAssignedPeople = currentUnit ? assignments[currentUnit.id] ?? [] : [];
+  const currentPerson = people[currentPersonIndex] ?? null;
 
   const allItemsAssigned = useMemo(
     () => units.length > 0 && units.every((unit) => (assignments[unit.id] ?? []).length > 0),
@@ -48,6 +52,14 @@ export default function HomePage() {
   }, [step, people, units, assignments, taxCents, tipCents]);
 
   const overallSubtotal = useMemo(() => units.reduce((sum, unit) => sum + unit.amountCents, 0), [units]);
+
+  useEffect(() => {
+    setCurrentUnitIndex((prev) => Math.max(0, Math.min(units.length - 1, prev)));
+  }, [units.length]);
+
+  useEffect(() => {
+    setCurrentPersonIndex((prev) => Math.max(0, Math.min(people.length - 1, prev)));
+  }, [people.length]);
 
   function onFileChange(event: ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files?.[0] ?? null;
@@ -89,6 +101,8 @@ export default function HomePage() {
       setAssignments({});
       setPeople([]);
       setCurrentUnitIndex(0);
+      setCurrentPersonIndex(0);
+      setAssignMode("byItem");
       setStep("people");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to parse receipt.");
@@ -133,45 +147,96 @@ export default function HomePage() {
     });
   }
 
+  function toggleAssignmentForUnit(unitId: string, name: string) {
+    setAssignments((prev) => {
+      const selected = prev[unitId] ?? [];
+      const exists = selected.includes(name);
+      return {
+        ...prev,
+        [unitId]: exists ? selected.filter((n) => n !== name) : [...selected, name]
+      };
+    });
+  }
+
+  function setAllPeopleForUnit(unitId: string) {
+    setAssignments((prev) => ({
+      ...prev,
+      [unitId]: [...people]
+    }));
+  }
+
+  function clearAllPeopleForUnit(unitId: string) {
+    setAssignments((prev) => ({
+      ...prev,
+      [unitId]: []
+    }));
+  }
+
   function togglePersonForCurrentUnit(name: string) {
     if (!currentUnit) {
       return;
     }
-
-    setAssignments((prev) => {
-      const selected = prev[currentUnit.id] ?? [];
-      const exists = selected.includes(name);
-      return {
-        ...prev,
-        [currentUnit.id]: exists ? selected.filter((n) => n !== name) : [...selected, name]
-      };
-    });
+    toggleAssignmentForUnit(currentUnit.id, name);
   }
 
   function selectAllForCurrentUnit() {
     if (!currentUnit) {
       return;
     }
-
-    setAssignments((prev) => ({
-      ...prev,
-      [currentUnit.id]: [...people]
-    }));
+    setAllPeopleForUnit(currentUnit.id);
   }
 
   function clearForCurrentUnit() {
     if (!currentUnit) {
       return;
     }
-
-    setAssignments((prev) => ({
-      ...prev,
-      [currentUnit.id]: []
-    }));
+    clearAllPeopleForUnit(currentUnit.id);
   }
 
-  function moveUnit(delta: number) {
+  function toggleCurrentPersonForUnit(unitId: string) {
+    if (!currentPerson) {
+      return;
+    }
+    toggleAssignmentForUnit(unitId, currentPerson);
+  }
+
+  function selectAllItemsForCurrentPerson() {
+    if (!currentPerson) {
+      return;
+    }
+
+    setAssignments((prev) => {
+      const next = { ...prev };
+      units.forEach((unit) => {
+        const selected = next[unit.id] ?? [];
+        if (!selected.includes(currentPerson)) {
+          next[unit.id] = [...selected, currentPerson];
+        }
+      });
+      return next;
+    });
+  }
+
+  function clearAllItemsForCurrentPerson() {
+    if (!currentPerson) {
+      return;
+    }
+
+    setAssignments((prev) => {
+      const next = { ...prev };
+      units.forEach((unit) => {
+        next[unit.id] = (next[unit.id] ?? []).filter((name) => name !== currentPerson);
+      });
+      return next;
+    });
+  }
+
+  function moveCurrentUnit(delta: number) {
     setCurrentUnitIndex((prev) => Math.max(0, Math.min(units.length - 1, prev + delta)));
+  }
+
+  function moveCurrentPerson(delta: number) {
+    setCurrentPersonIndex((prev) => Math.max(0, Math.min(people.length - 1, prev + delta)));
   }
 
   function toCents(value: string): number {
@@ -303,11 +368,27 @@ export default function HomePage() {
   }
 
   function renderAssignStep() {
-    if (!currentUnit) {
+    if (people.length === 0) {
+      return (
+        <div className="space-y-4">
+          <p className="text-sm uppercase tracking-[0.24em] text-teal-800">Step 3</p>
+          <h2 className="text-3xl font-semibold">Assign each item.</h2>
+          <p className="text-sm text-gray-700">Add at least one person before assigning items.</p>
+          <button onClick={() => setStep("people")} className="rounded-lg border border-gray-400 px-4 py-2">
+            Back to people
+          </button>
+        </div>
+      );
+    }
+
+    if (!currentUnit || !currentPerson) {
       return null;
     }
 
     const selectedCount = currentAssignedPeople.length;
+    const selectedItemCountForCurrentPerson = units.filter((unit) =>
+      (assignments[unit.id] ?? []).includes(currentPerson)
+    ).length;
 
     return (
       <div className="space-y-7">
@@ -315,54 +396,124 @@ export default function HomePage() {
           <p className="text-sm uppercase tracking-[0.24em] text-teal-800">Step 3</p>
           <h2 className="mt-2 text-3xl font-semibold">Assign each item.</h2>
           <p className="mt-2 text-sm text-gray-700">
-            Item {currentUnitIndex + 1} of {units.length}
+            {assignMode === "byItem"
+              ? `Item ${currentUnitIndex + 1} of ${units.length}`
+              : `Person ${currentPersonIndex + 1} of ${people.length}`}
           </p>
         </div>
 
-        <div className="rounded-2xl border border-gray-300 bg-white p-6">
-          <p className="text-sm text-gray-500">Current item</p>
-          <h3 className="mt-1 text-2xl font-semibold">{currentUnit.label}</h3>
-          <p className="mono mt-1 text-lg">${moneyFromCents(currentUnit.amountCents)}</p>
-
-          <div className="mt-5 flex flex-wrap gap-2">
-            {people.map((person) => {
-              const selected = currentAssignedPeople.includes(person);
-              return (
-                <button
-                  key={person}
-                  onClick={() => togglePersonForCurrentUnit(person)}
-                  className={`rounded-full px-4 py-2 text-sm transition ${
-                    selected ? "bg-teal-700 text-white" : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                  }`}
-                >
-                  {person}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button onClick={selectAllForCurrentUnit} className="rounded-lg border border-teal-700 px-3 py-2 text-sm text-teal-900">
-              Select all
+        <div className="rounded-2xl border border-gray-300 bg-white p-4">
+          <p className="text-sm text-gray-600">Assignment mode</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              onClick={() => setAssignMode("byItem")}
+              className={`rounded-lg px-4 py-2 text-sm transition ${
+                assignMode === "byItem" ? "bg-teal-700 text-white" : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+              }`}
+            >
+              View each item
             </button>
-            <button onClick={clearForCurrentUnit} className="rounded-lg border border-gray-400 px-3 py-2 text-sm text-gray-700">
-              Clear
+            <button
+              onClick={() => setAssignMode("byPerson")}
+              className={`rounded-lg px-4 py-2 text-sm transition ${
+                assignMode === "byPerson" ? "bg-teal-700 text-white" : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+              }`}
+            >
+              View each person
             </button>
-            <p className="self-center text-sm text-gray-600">Selected: {selectedCount}</p>
           </div>
         </div>
 
+        {assignMode === "byItem" ? (
+          <div className="rounded-2xl border border-gray-300 bg-white p-6">
+            <p className="text-sm text-gray-500">Current item</p>
+            <h3 className="mt-1 text-2xl font-semibold">{currentUnit.label}</h3>
+            <p className="mono mt-1 text-lg">${moneyFromCents(currentUnit.amountCents)}</p>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              {people.map((person) => {
+                const selected = currentAssignedPeople.includes(person);
+                return (
+                  <button
+                    key={person}
+                    onClick={() => togglePersonForCurrentUnit(person)}
+                    className={`rounded-full px-4 py-2 text-sm transition ${
+                      selected ? "bg-teal-700 text-white" : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                    }`}
+                  >
+                    {person}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                onClick={selectAllForCurrentUnit}
+                className="rounded-lg border border-teal-700 px-3 py-2 text-sm text-teal-900"
+              >
+                Select all
+              </button>
+              <button onClick={clearForCurrentUnit} className="rounded-lg border border-gray-400 px-3 py-2 text-sm text-gray-700">
+                Clear
+              </button>
+              <p className="self-center text-sm text-gray-600">Selected: {selectedCount}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-gray-300 bg-white p-6">
+            <p className="text-sm text-gray-500">Current person</p>
+            <h3 className="mt-1 text-2xl font-semibold">{currentPerson}</h3>
+            <p className="mt-1 text-sm text-gray-700">
+              Select every item this person is sharing. Selected items: {selectedItemCountForCurrentPerson}
+            </p>
+
+            <div className="mt-5 grid gap-2">
+              {units.map((unit) => {
+                const selected = (assignments[unit.id] ?? []).includes(currentPerson);
+                return (
+                  <button
+                    key={unit.id}
+                    onClick={() => toggleCurrentPersonForUnit(unit.id)}
+                    className={`flex items-center justify-between rounded-xl px-4 py-3 text-left text-sm transition ${
+                      selected ? "bg-teal-700 text-white" : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                    }`}
+                  >
+                    <span>{unit.label}</span>
+                    <span className="mono">${moneyFromCents(unit.amountCents)}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                onClick={selectAllItemsForCurrentPerson}
+                className="rounded-lg border border-teal-700 px-3 py-2 text-sm text-teal-900"
+              >
+                Select all items
+              </button>
+              <button
+                onClick={clearAllItemsForCurrentPerson}
+                className="rounded-lg border border-gray-400 px-3 py-2 text-sm text-gray-700"
+              >
+                Clear all items
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-3">
           <button
-            onClick={() => moveUnit(-1)}
-            disabled={currentUnitIndex === 0}
+            onClick={() => (assignMode === "byItem" ? moveCurrentUnit(-1) : moveCurrentPerson(-1))}
+            disabled={assignMode === "byItem" ? currentUnitIndex === 0 : currentPersonIndex === 0}
             className="rounded-lg border border-gray-400 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Previous
           </button>
           <button
-            onClick={() => moveUnit(1)}
-            disabled={currentUnitIndex === units.length - 1}
+            onClick={() => (assignMode === "byItem" ? moveCurrentUnit(1) : moveCurrentPerson(1))}
+            disabled={assignMode === "byItem" ? currentUnitIndex === units.length - 1 : currentPersonIndex === people.length - 1}
             className="rounded-lg border border-gray-400 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Next
