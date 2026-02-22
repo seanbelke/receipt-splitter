@@ -26,34 +26,84 @@ type IconProps = { className?: string };
 
 function UploadIcon({ className = "h-4 w-4" }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
-      <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0 4 4m-4-4-4 4M5 14.5v3A2.5 2.5 0 0 0 7.5 20h9a2.5 2.5 0 0 0 2.5-2.5v-3" />
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      className={className}
+    >
+      <path
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 16V4m0 0 4 4m-4-4-4 4M5 14.5v3A2.5 2.5 0 0 0 7.5 20h9a2.5 2.5 0 0 0 2.5-2.5v-3"
+      />
     </svg>
   );
 }
 
 function UsersIcon({ className = "h-4 w-4" }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
-      <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1m18 0v-1a4 4 0 0 0-3-3.87M9.5 7a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm8 1a3 3 0 0 1 0 6" />
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      className={className}
+    >
+      <path
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1m18 0v-1a4 4 0 0 0-3-3.87M9.5 7a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm8 1a3 3 0 0 1 0 6"
+      />
     </svg>
   );
 }
 
 function AssignIcon({ className = "h-4 w-4" }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
-      <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M15.5 8.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z" />
-      <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M4.5 19v-1a4.5 4.5 0 0 1 4.5-4.5h4.5" />
-      <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="m16.5 15.5 2 2 3.5-4" />
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      className={className}
+    >
+      <path
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15.5 8.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z"
+      />
+      <path
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4.5 19v-1a4.5 4.5 0 0 1 4.5-4.5h4.5"
+      />
+      <path
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="m16.5 15.5 2 2 3.5-4"
+      />
     </svg>
   );
 }
 
 function ResultIcon({ className = "h-4 w-4" }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
-      <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M7 13h10M7 9h6m-6 8h8M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" />
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      className={className}
+    >
+      <path
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M7 13h10M7 9h6m-6 8h8M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"
+      />
     </svg>
   );
 }
@@ -75,7 +125,14 @@ function buildHtmlReport(params: {
   taxCents: number;
   tipCents: number;
 }): string {
-  const { generatedAtIso, receipt, breakdown, overallSubtotal, taxCents, tipCents } = params;
+  const {
+    generatedAtIso,
+    receipt,
+    breakdown,
+    overallSubtotal,
+    taxCents,
+    tipCents,
+  } = params;
   const overallTotal = overallSubtotal + taxCents + tipCents;
   const generatedAt = new Date(generatedAtIso).toLocaleString();
 
@@ -304,7 +361,9 @@ export default function HomePage() {
   const [tipCents, setTipCents] = useState(0);
   const [isParsing, setIsParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [reportHtmlPreview, setReportHtmlPreview] = useState<string | null>(null);
+  const [reportHtmlPreview, setReportHtmlPreview] = useState<string | null>(
+    null,
+  );
   const [assignPanelHeight, setAssignPanelHeight] = useState<number | null>(
     null,
   );
@@ -681,15 +740,43 @@ export default function HomePage() {
 
         <label className="block rounded-2xl border border-dashed border-slate-400/70 bg-white/90 p-6">
           <span className="mb-2 block text-sm font-medium text-slate-700">
-            Receipt Image (jpg, png, etc.)
+            Receipt Image
           </span>
-          <input type="file" accept="image/*" onChange={onFileChange} />
+          <input
+            id="receipt-image-input"
+            type="file"
+            accept="image/*"
+            onChange={onFileChange}
+            className="sr-only"
+          />
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <label
+              htmlFor="receipt-image-input"
+              className="file-picker-btn inline-flex cursor-pointer items-center gap-2 px-4 py-2 text-sm font-semibold"
+            >
+              <UploadIcon />
+              {file ? "Replace file" : "Choose file"}
+            </label>
+            <span className="text-sm text-slate-500">
+              {file ? file.name : "No file selected"}
+            </span>
+          </div>
+          <p className="mt-2 text-xs text-slate-500">
+            Supported formats: JPG, PNG, HEIC, and most mobile photo types.
+          </p>
         </label>
 
         {file && (
-          <p className="mono rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            Selected: {file.name} ({Math.round(file.size / 1024)} KB)
-          </p>
+          <div className="soft-card flex items-center justify-between gap-3 rounded-xl px-4 py-3">
+            <p className="flex min-w-0 items-center gap-2 text-sm text-slate-700">
+              <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+              <span className="font-medium">Selected</span>
+              <span className="truncate text-slate-900">{file.name}</span>
+            </p>
+            <span className="mono shrink-0 rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-600">
+              {Math.round(file.size / 1024)} KB
+            </span>
+          </div>
         )}
 
         <button
@@ -1157,10 +1244,7 @@ export default function HomePage() {
 
         <div className="grid gap-3">
           {totals.map((person) => (
-            <div
-              key={person.name}
-              className="soft-card rounded-2xl p-5"
-            >
+            <div key={person.name} className="soft-card rounded-2xl p-5">
               <h3 className="text-xl font-semibold">{person.name}</h3>
               <p className="mono mt-2 text-sm">
                 Food: ${moneyFromCents(person.subtotalCents)}
@@ -1237,7 +1321,9 @@ export default function HomePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-3 sm:p-6">
           <div className="w-full max-w-6xl rounded-2xl bg-white p-3 shadow-2xl sm:p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-medium text-slate-700">HTML report preview</p>
+              <p className="text-sm font-medium text-slate-700">
+                HTML report preview
+              </p>
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={printHtmlReport}

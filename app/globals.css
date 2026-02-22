@@ -121,6 +121,27 @@ input {
     border-color: rgba(15, 118, 110, 0.7);
   }
 
+  .file-picker-btn {
+    border-radius: 0.75rem;
+    border: 1px solid rgba(15, 118, 110, 0.38);
+    background:
+      linear-gradient(140deg, rgba(15, 118, 110, 0.12), rgba(56, 189, 248, 0.12)),
+      #ffffff;
+    color: #0f766e;
+    box-shadow: 0 12px 24px -20px rgba(15, 23, 42, 0.55);
+    transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+  }
+
+  .file-picker-btn:hover {
+    transform: translateY(-1px);
+    border-color: rgba(15, 118, 110, 0.58);
+    box-shadow: 0 16px 26px -20px rgba(15, 23, 42, 0.55);
+  }
+
+  .file-picker-btn:active {
+    transform: translateY(0);
+  }
+
   .parse-receipt-btn[aria-busy="true"]:disabled {
     opacity: 0.78;
   }
