@@ -39,6 +39,14 @@ npm run dev
 
 Then open [http://localhost:3000](http://localhost:3000).
 
+## Testing
+
+```bash
+npm test
+```
+
+This runs all unit tests with Node's built-in test runner.
+
 ## Notes
 
 - Receipt rows with `quantity > 1` are expanded into separate assignable units.
