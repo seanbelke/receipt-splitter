@@ -1,7 +1,18 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { calculateTotals, expandItemsToUnits, moneyFromCents } from "@/lib/split";
+import {
+  ChangeEvent,
+  FormEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  calculateTotals,
+  expandItemsToUnits,
+  moneyFromCents,
+} from "@/lib/split";
 import { AssignableUnit, ParsedReceipt } from "@/lib/types";
 
 type Step = "upload" | "people" | "assign" | "results";
@@ -26,15 +37,23 @@ export default function HomePage() {
   const [tipCents, setTipCents] = useState(0);
   const [isParsing, setIsParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [assignPanelHeight, setAssignPanelHeight] = useState<number | null>(
+    null,
+  );
   const newPersonInputRef = useRef<HTMLInputElement>(null);
+  const assignContentPanelRef = useRef<HTMLDivElement>(null);
 
   const currentUnit = units[currentUnitIndex];
-  const currentAssignedPeople = currentUnit ? assignments[currentUnit.id] ?? [] : [];
+  const currentAssignedPeople = currentUnit
+    ? (assignments[currentUnit.id] ?? [])
+    : [];
   const currentPerson = people[currentPersonIndex] ?? null;
 
   const allItemsAssigned = useMemo(
-    () => units.length > 0 && units.every((unit) => (assignments[unit.id] ?? []).length > 0),
-    [units, assignments]
+    () =>
+      units.length > 0 &&
+      units.every((unit) => (assignments[unit.id] ?? []).length > 0),
+    [units, assignments],
   );
 
   const totals = useMemo(() => {
@@ -47,19 +66,60 @@ export default function HomePage() {
       units,
       assignments,
       taxCents,
-      tipCents
+      tipCents,
     });
   }, [step, people, units, assignments, taxCents, tipCents]);
 
-  const overallSubtotal = useMemo(() => units.reduce((sum, unit) => sum + unit.amountCents, 0), [units]);
+  const overallSubtotal = useMemo(
+    () => units.reduce((sum, unit) => sum + unit.amountCents, 0),
+    [units],
+  );
 
   useEffect(() => {
-    setCurrentUnitIndex((prev) => Math.max(0, Math.min(units.length - 1, prev)));
+    setCurrentUnitIndex((prev) =>
+      Math.max(0, Math.min(units.length - 1, prev)),
+    );
   }, [units.length]);
 
   useEffect(() => {
-    setCurrentPersonIndex((prev) => Math.max(0, Math.min(people.length - 1, prev)));
+    setCurrentPersonIndex((prev) =>
+      Math.max(0, Math.min(people.length - 1, prev)),
+    );
   }, [people.length]);
+
+  useEffect(() => {
+    if (
+      step !== "assign" ||
+      typeof window === "undefined" ||
+      typeof ResizeObserver === "undefined"
+    ) {
+      setAssignPanelHeight(null);
+      return;
+    }
+
+    const desktopQuery = window.matchMedia("(min-width: 1024px)");
+    const updateHeight = () => {
+      if (!desktopQuery.matches) {
+        setAssignPanelHeight(null);
+        return;
+      }
+      setAssignPanelHeight(assignContentPanelRef.current?.offsetHeight ?? null);
+    };
+
+    updateHeight();
+    const observer = new ResizeObserver(() => updateHeight());
+    if (assignContentPanelRef.current) {
+      observer.observe(assignContentPanelRef.current);
+    }
+    desktopQuery.addEventListener("change", updateHeight);
+    window.addEventListener("resize", updateHeight);
+
+    return () => {
+      observer.disconnect();
+      desktopQuery.removeEventListener("change", updateHeight);
+      window.removeEventListener("resize", updateHeight);
+    };
+  }, [step, assignMode, currentPersonIndex, currentUnitIndex]);
 
   function onFileChange(event: ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files?.[0] ?? null;
@@ -83,7 +143,7 @@ export default function HomePage() {
 
       const res = await fetch("/api/parse-receipt", {
         method: "POST",
-        body: formData
+        body: formData,
       });
 
       const payload = await res.json();
@@ -118,7 +178,9 @@ export default function HomePage() {
       return;
     }
 
-    const duplicate = people.some((person) => person.toLowerCase() === trimmed.toLowerCase());
+    const duplicate = people.some(
+      (person) => person.toLowerCase() === trimmed.toLowerCase(),
+    );
     if (duplicate) {
       setError("Names must be unique (case-insensitive).");
       newPersonInputRef.current?.focus();
@@ -153,7 +215,9 @@ export default function HomePage() {
       const exists = selected.includes(name);
       return {
         ...prev,
-        [unitId]: exists ? selected.filter((n) => n !== name) : [...selected, name]
+        [unitId]: exists
+          ? selected.filter((n) => n !== name)
+          : [...selected, name],
       };
     });
   }
@@ -161,14 +225,14 @@ export default function HomePage() {
   function setAllPeopleForUnit(unitId: string) {
     setAssignments((prev) => ({
       ...prev,
-      [unitId]: [...people]
+      [unitId]: [...people],
     }));
   }
 
   function clearAllPeopleForUnit(unitId: string) {
     setAssignments((prev) => ({
       ...prev,
-      [unitId]: []
+      [unitId]: [],
     }));
   }
 
@@ -225,18 +289,24 @@ export default function HomePage() {
     setAssignments((prev) => {
       const next = { ...prev };
       units.forEach((unit) => {
-        next[unit.id] = (next[unit.id] ?? []).filter((name) => name !== currentPerson);
+        next[unit.id] = (next[unit.id] ?? []).filter(
+          (name) => name !== currentPerson,
+        );
       });
       return next;
     });
   }
 
   function moveCurrentUnit(delta: number) {
-    setCurrentUnitIndex((prev) => Math.max(0, Math.min(units.length - 1, prev + delta)));
+    setCurrentUnitIndex((prev) =>
+      Math.max(0, Math.min(units.length - 1, prev + delta)),
+    );
   }
 
   function moveCurrentPerson(delta: number) {
-    setCurrentPersonIndex((prev) => Math.max(0, Math.min(people.length - 1, prev + delta)));
+    setCurrentPersonIndex((prev) =>
+      Math.max(0, Math.min(people.length - 1, prev + delta)),
+    );
   }
 
   function toCents(value: string): number {
@@ -251,15 +321,22 @@ export default function HomePage() {
     return (
       <form onSubmit={parseReceipt} className="space-y-6">
         <div>
-          <p className="text-sm uppercase tracking-[0.24em] text-teal-800">Step 1</p>
-          <h1 className="mt-2 text-4xl font-semibold leading-tight">Upload a receipt photo.</h1>
+          <p className="text-sm uppercase tracking-[0.24em] text-teal-800">
+            Step 1
+          </p>
+          <h1 className="mt-2 text-4xl font-semibold leading-tight">
+            Upload a receipt photo.
+          </h1>
           <p className="mt-3 text-sm text-gray-700">
-            We will parse line items, quantity rows, tax, and tip so you can quickly assign who ate each item.
+            We will parse line items, quantity rows, tax, and tip so you can
+            quickly assign who ate each item.
           </p>
         </div>
 
         <label className="block rounded-2xl border border-dashed border-gray-400 bg-white p-6">
-          <span className="mb-2 block text-sm text-gray-800">Receipt Image (jpg, png, etc.)</span>
+          <span className="mb-2 block text-sm text-gray-800">
+            Receipt Image (jpg, png, etc.)
+          </span>
           <input type="file" accept="image/*" onChange={onFileChange} />
         </label>
 
@@ -288,13 +365,18 @@ export default function HomePage() {
     return (
       <div className="space-y-7">
         <div>
-          <p className="text-sm uppercase tracking-[0.24em] text-teal-800">Step 2</p>
-          <h2 className="mt-2 text-3xl font-semibold">Add everyone at the table.</h2>
+          <p className="text-sm uppercase tracking-[0.24em] text-teal-800">
+            Step 2
+          </p>
+          <h2 className="mt-2 text-3xl font-semibold">
+            Add everyone at the table.
+          </h2>
         </div>
 
         <div className="rounded-2xl border border-gray-300 bg-white p-5">
           <p className="text-sm text-gray-700">
-            Parsed {receipt.items.length} rows into {units.length} assignable units. Currency: {receipt.currency}.
+            Parsed {receipt.items.length} rows into {units.length} assignable
+            units. Currency: {receipt.currency}.
           </p>
           <div className="mt-3 space-y-1 text-sm text-gray-600">
             <p>Subtotal: ${moneyFromCents(overallSubtotal)}</p>
@@ -328,7 +410,9 @@ export default function HomePage() {
         </div>
 
         <div className="rounded-2xl border border-gray-300 bg-white p-5">
-          <p className="mb-3 text-sm text-gray-700">People (names must be unique):</p>
+          <p className="mb-3 text-sm text-gray-700">
+            People (names must be unique):
+          </p>
           <div className="flex flex-wrap gap-2">
             {people.map((person) => (
               <button
@@ -339,10 +423,15 @@ export default function HomePage() {
                 {person} ×
               </button>
             ))}
-            {people.length === 0 && <p className="text-sm text-gray-500">No people added yet.</p>}
+            {people.length === 0 && (
+              <p className="text-sm text-gray-500">No people added yet.</p>
+            )}
           </div>
 
-          <form onSubmit={onAddPersonSubmit} className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <form
+            onSubmit={onAddPersonSubmit}
+            className="mt-4 flex flex-col gap-2 sm:flex-row"
+          >
             <input
               ref={newPersonInputRef}
               value={newPerson}
@@ -350,7 +439,10 @@ export default function HomePage() {
               placeholder="Add a name"
               className="flex-1 rounded-lg border border-gray-300 px-3 py-2"
             />
-            <button type="submit" className="rounded-lg border border-teal-700 px-4 py-2 text-teal-800 hover:bg-teal-50">
+            <button
+              type="submit"
+              className="rounded-lg border border-teal-700 px-4 py-2 text-teal-800 hover:bg-teal-50"
+            >
               Add person
             </button>
           </form>
@@ -371,10 +463,17 @@ export default function HomePage() {
     if (people.length === 0) {
       return (
         <div className="space-y-4">
-          <p className="text-sm uppercase tracking-[0.24em] text-teal-800">Step 3</p>
+          <p className="text-sm uppercase tracking-[0.24em] text-teal-800">
+            Step 3
+          </p>
           <h2 className="text-3xl font-semibold">Assign each item.</h2>
-          <p className="text-sm text-gray-700">Add at least one person before assigning items.</p>
-          <button onClick={() => setStep("people")} className="rounded-lg border border-gray-400 px-4 py-2">
+          <p className="text-sm text-gray-700">
+            Add at least one person before assigning items.
+          </p>
+          <button
+            onClick={() => setStep("people")}
+            className="rounded-lg border border-gray-400 px-4 py-2"
+          >
             Back to people
           </button>
         </div>
@@ -387,13 +486,37 @@ export default function HomePage() {
 
     const selectedCount = currentAssignedPeople.length;
     const selectedItemCountForCurrentPerson = units.filter((unit) =>
-      (assignments[unit.id] ?? []).includes(currentPerson)
+      (assignments[unit.id] ?? []).includes(currentPerson),
     ).length;
+    const isByItem = assignMode === "byItem";
+    const jumpNavEntries = isByItem
+      ? units.map((unit, index) => ({
+          key: unit.id,
+          title: unit.label,
+          subtitle: `$${moneyFromCents(unit.amountCents)}`,
+          progress: (assignments[unit.id] ?? []).length,
+          progressTotal: people.length,
+          isActive: index === currentUnitIndex,
+          onClick: () => setCurrentUnitIndex(index),
+        }))
+      : people.map((person, index) => ({
+          key: person,
+          title: person,
+          subtitle: `${units.filter((unit) => (assignments[unit.id] ?? []).includes(person)).length} / ${units.length} items`,
+          progress: units.filter((unit) =>
+            (assignments[unit.id] ?? []).includes(person),
+          ).length,
+          progressTotal: units.length,
+          isActive: index === currentPersonIndex,
+          onClick: () => setCurrentPersonIndex(index),
+        }));
 
     return (
       <div className="space-y-7">
         <div>
-          <p className="text-sm uppercase tracking-[0.24em] text-teal-800">Step 3</p>
+          <p className="text-sm uppercase tracking-[0.24em] text-teal-800">
+            Step 3
+          </p>
           <h2 className="mt-2 text-3xl font-semibold">Assign each item.</h2>
           <p className="mt-2 text-sm text-gray-700">
             {assignMode === "byItem"
@@ -408,7 +531,9 @@ export default function HomePage() {
             <button
               onClick={() => setAssignMode("byItem")}
               className={`rounded-lg px-4 py-2 text-sm transition ${
-                assignMode === "byItem" ? "bg-teal-700 text-white" : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                assignMode === "byItem"
+                  ? "bg-teal-700 text-white"
+                  : "bg-gray-100 text-gray-800 hover:bg-gray-200"
               }`}
             >
               View each item
@@ -416,7 +541,9 @@ export default function HomePage() {
             <button
               onClick={() => setAssignMode("byPerson")}
               className={`rounded-lg px-4 py-2 text-sm transition ${
-                assignMode === "byPerson" ? "bg-teal-700 text-white" : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                assignMode === "byPerson"
+                  ? "bg-teal-700 text-white"
+                  : "bg-gray-100 text-gray-800 hover:bg-gray-200"
               }`}
             >
               View each person
@@ -424,96 +551,174 @@ export default function HomePage() {
           </div>
         </div>
 
-        {assignMode === "byItem" ? (
-          <div className="rounded-2xl border border-gray-300 bg-white p-6">
-            <p className="text-sm text-gray-500">Current item</p>
-            <h3 className="mt-1 text-2xl font-semibold">{currentUnit.label}</h3>
-            <p className="mono mt-1 text-lg">${moneyFromCents(currentUnit.amountCents)}</p>
-
-            <div className="mt-5 flex flex-wrap gap-2">
-              {people.map((person) => {
-                const selected = currentAssignedPeople.includes(person);
-                return (
-                  <button
-                    key={person}
-                    onClick={() => togglePersonForCurrentUnit(person)}
-                    className={`rounded-full px-4 py-2 text-sm transition ${
-                      selected ? "bg-teal-700 text-white" : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                    }`}
-                  >
-                    {person}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                onClick={selectAllForCurrentUnit}
-                className="rounded-lg border border-teal-700 px-3 py-2 text-sm text-teal-900"
-              >
-                Select all
-              </button>
-              <button onClick={clearForCurrentUnit} className="rounded-lg border border-gray-400 px-3 py-2 text-sm text-gray-700">
-                Clear
-              </button>
-              <p className="self-center text-sm text-gray-600">Selected: {selectedCount}</p>
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-gray-300 bg-white p-6">
-            <p className="text-sm text-gray-500">Current person</p>
-            <h3 className="mt-1 text-2xl font-semibold">{currentPerson}</h3>
-            <p className="mt-1 text-sm text-gray-700">
-              Select every item this person is sharing. Selected items: {selectedItemCountForCurrentPerson}
+        <div className="grid gap-4 lg:grid-cols-[15rem_1fr] lg:items-start">
+          <aside
+            className="rounded-2xl border border-gray-300 bg-white p-3 lg:flex lg:min-h-[32rem] lg:flex-col"
+            style={
+              assignPanelHeight
+                ? { maxHeight: `${assignPanelHeight}px` }
+                : undefined
+            }
+          >
+            <p className="px-2 pb-2 text-xs uppercase tracking-[0.16em] text-gray-500">
+              {isByItem ? "Jump to item" : "Jump to person"}
             </p>
-
-            <div className="mt-5 grid gap-2">
-              {units.map((unit) => {
-                const selected = (assignments[unit.id] ?? []).includes(currentPerson);
-                return (
-                  <button
-                    key={unit.id}
-                    onClick={() => toggleCurrentPersonForUnit(unit.id)}
-                    className={`flex items-center justify-between rounded-xl px-4 py-3 text-left text-sm transition ${
-                      selected ? "bg-teal-700 text-white" : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+            <div className="flex gap-2 overflow-x-auto pb-1 lg:flex-1 lg:min-h-0 lg:flex-col lg:overflow-y-auto lg:overflow-x-visible">
+              {jumpNavEntries.map((entry) => (
+                <button
+                  key={entry.key}
+                  onClick={entry.onClick}
+                  className={`min-w-44 rounded-xl px-3 py-2 text-left text-sm transition lg:min-w-0 ${
+                    entry.isActive
+                      ? "bg-teal-700 text-white"
+                      : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                  }`}
+                >
+                  <p className="truncate font-medium">{entry.title}</p>
+                  <div
+                    className={`mt-1 flex items-center justify-between text-xs ${
+                      entry.isActive ? "text-teal-50" : "text-gray-600"
                     }`}
                   >
-                    <span>{unit.label}</span>
-                    <span className="mono">${moneyFromCents(unit.amountCents)}</span>
-                  </button>
-                );
-              })}
+                    <span className="truncate">{entry.subtitle}</span>
+                    <span>{entry.progress + "/" + entry.progressTotal}</span>
+                  </div>
+                </button>
+              ))}
             </div>
+          </aside>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                onClick={selectAllItemsForCurrentPerson}
-                className="rounded-lg border border-teal-700 px-3 py-2 text-sm text-teal-900"
-              >
-                Select all items
-              </button>
-              <button
-                onClick={clearAllItemsForCurrentPerson}
-                className="rounded-lg border border-gray-400 px-3 py-2 text-sm text-gray-700"
-              >
-                Clear all items
-              </button>
+          {isByItem ? (
+            <div
+              ref={assignContentPanelRef}
+              className="rounded-2xl border border-gray-300 bg-white p-6 lg:min-h-[32rem] lg:self-start"
+            >
+              <p className="text-sm text-gray-500">Current item</p>
+              <h3 className="mt-1 text-2xl font-semibold">
+                {currentUnit.label}
+              </h3>
+              <p className="mono mt-1 text-lg">
+                ${moneyFromCents(currentUnit.amountCents)}
+              </p>
+
+              <div className="mt-5 flex flex-wrap gap-2">
+                {people.map((person) => {
+                  const selected = currentAssignedPeople.includes(person);
+                  return (
+                    <button
+                      key={person}
+                      onClick={() => togglePersonForCurrentUnit(person)}
+                      className={`rounded-full px-4 py-2 text-sm transition ${
+                        selected
+                          ? "bg-teal-700 text-white"
+                          : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                      }`}
+                    >
+                      {person}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  onClick={selectAllForCurrentUnit}
+                  className="rounded-lg border border-teal-700 px-3 py-2 text-sm text-teal-900"
+                >
+                  Select all
+                </button>
+                <button
+                  onClick={clearForCurrentUnit}
+                  className="rounded-lg border border-gray-400 px-3 py-2 text-sm text-gray-700"
+                >
+                  Clear
+                </button>
+                <p className="self-center text-sm text-gray-600">
+                  Selected: {selectedCount}
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          ) : (
+            <div
+              ref={assignContentPanelRef}
+              className="rounded-2xl border border-gray-300 bg-white p-6 lg:min-h-[32rem] lg:self-start"
+            >
+              <p className="text-sm text-gray-500">Current person</p>
+              <h3 className="mt-1 text-2xl font-semibold">{currentPerson}</h3>
+              <p className="mt-1 text-sm text-gray-700">
+                Select every item this person is sharing. Selected items:{" "}
+                {selectedItemCountForCurrentPerson}
+              </p>
+
+              <div className="mt-5 grid gap-2">
+                {units.map((unit) => {
+                  const selected = (assignments[unit.id] ?? []).includes(
+                    currentPerson,
+                  );
+                  return (
+                    <button
+                      key={unit.id}
+                      onClick={() => toggleCurrentPersonForUnit(unit.id)}
+                      className={`flex items-center justify-between rounded-xl px-4 py-3 text-left text-sm transition ${
+                        selected
+                          ? "bg-teal-700 text-white"
+                          : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                      }`}
+                    >
+                      <span>{unit.label}</span>
+                      <span className="mono">
+                        ${moneyFromCents(unit.amountCents)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  onClick={selectAllItemsForCurrentPerson}
+                  className="rounded-lg border border-teal-700 px-3 py-2 text-sm text-teal-900"
+                >
+                  Select all items
+                </button>
+                <button
+                  onClick={clearAllItemsForCurrentPerson}
+                  className="rounded-lg border border-gray-400 px-3 py-2 text-sm text-gray-700"
+                >
+                  Clear all items
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
         <div className="flex flex-wrap gap-3">
           <button
-            onClick={() => (assignMode === "byItem" ? moveCurrentUnit(-1) : moveCurrentPerson(-1))}
-            disabled={assignMode === "byItem" ? currentUnitIndex === 0 : currentPersonIndex === 0}
+            onClick={() =>
+              assignMode === "byItem"
+                ? moveCurrentUnit(-1)
+                : moveCurrentPerson(-1)
+            }
+            disabled={
+              assignMode === "byItem"
+                ? currentUnitIndex === 0
+                : currentPersonIndex === 0
+            }
             className="rounded-lg border border-gray-400 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Previous
           </button>
           <button
-            onClick={() => (assignMode === "byItem" ? moveCurrentUnit(1) : moveCurrentPerson(1))}
-            disabled={assignMode === "byItem" ? currentUnitIndex === units.length - 1 : currentPersonIndex === people.length - 1}
+            onClick={() =>
+              assignMode === "byItem"
+                ? moveCurrentUnit(1)
+                : moveCurrentPerson(1)
+            }
+            disabled={
+              assignMode === "byItem"
+                ? currentUnitIndex === units.length - 1
+                : currentPersonIndex === people.length - 1
+            }
             className="rounded-lg border border-gray-400 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Next
@@ -536,30 +741,54 @@ export default function HomePage() {
     return (
       <div className="space-y-7">
         <div>
-          <p className="text-sm uppercase tracking-[0.24em] text-teal-800">Step 4</p>
+          <p className="text-sm uppercase tracking-[0.24em] text-teal-800">
+            Step 4
+          </p>
           <h2 className="mt-2 text-3xl font-semibold">Final split.</h2>
         </div>
 
         <div className="rounded-2xl border border-gray-300 bg-white p-5">
-          <p className="mono text-sm text-gray-700">Receipt total: ${moneyFromCents(overallTotal)}</p>
-          <p className="mono text-sm text-gray-700">Subtotal: ${moneyFromCents(overallSubtotal)}</p>
-          <p className="mono text-sm text-gray-700">Tax: ${moneyFromCents(taxCents)}</p>
-          <p className="mono text-sm text-gray-700">Tip: ${moneyFromCents(tipCents)}</p>
+          <p className="mono text-sm text-gray-700">
+            Receipt total: ${moneyFromCents(overallTotal)}
+          </p>
+          <p className="mono text-sm text-gray-700">
+            Subtotal: ${moneyFromCents(overallSubtotal)}
+          </p>
+          <p className="mono text-sm text-gray-700">
+            Tax: ${moneyFromCents(taxCents)}
+          </p>
+          <p className="mono text-sm text-gray-700">
+            Tip: ${moneyFromCents(tipCents)}
+          </p>
         </div>
 
         <div className="grid gap-3">
           {totals.map((person) => (
-            <div key={person.name} className="rounded-2xl border border-gray-300 bg-white p-5">
+            <div
+              key={person.name}
+              className="rounded-2xl border border-gray-300 bg-white p-5"
+            >
               <h3 className="text-xl font-semibold">{person.name}</h3>
-              <p className="mono mt-2 text-sm">Food: ${moneyFromCents(person.subtotalCents)}</p>
-              <p className="mono text-sm">Tax share: ${moneyFromCents(person.taxShareCents)}</p>
-              <p className="mono text-sm">Tip share: ${moneyFromCents(person.tipShareCents)}</p>
-              <p className="mono mt-2 text-lg font-semibold">Owes: ${moneyFromCents(person.totalCents)}</p>
+              <p className="mono mt-2 text-sm">
+                Food: ${moneyFromCents(person.subtotalCents)}
+              </p>
+              <p className="mono text-sm">
+                Tax share: ${moneyFromCents(person.taxShareCents)}
+              </p>
+              <p className="mono text-sm">
+                Tip share: ${moneyFromCents(person.tipShareCents)}
+              </p>
+              <p className="mono mt-2 text-lg font-semibold">
+                Owes: ${moneyFromCents(person.totalCents)}
+              </p>
             </div>
           ))}
         </div>
 
-        <button onClick={() => setStep("assign")} className="rounded-lg border border-gray-400 px-4 py-2">
+        <button
+          onClick={() => setStep("assign")}
+          className="rounded-lg border border-gray-400 px-4 py-2"
+        >
           Back to assignment
         </button>
       </div>
@@ -569,12 +798,20 @@ export default function HomePage() {
   return (
     <main className="mx-auto min-h-screen w-full max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="mb-8">
-        <p className="mono text-xs uppercase tracking-[0.18em] text-gray-500">Receipt Splitter</p>
-        <p className="mt-1 text-sm text-gray-700">Progress: Step {stepIndex(step)} of 4</p>
+        <p className="mono text-xs uppercase tracking-[0.18em] text-gray-500">
+          Receipt Splitter
+        </p>
+        <p className="mt-1 text-sm text-gray-700">
+          Progress: Step {stepIndex(step)} of 4
+        </p>
       </div>
 
       <section className="rounded-3xl border border-gray-300 bg-white/80 p-6 shadow-sm sm:p-8">
-        {error && <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>}
+        {error && (
+          <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">
+            {error}
+          </p>
+        )}
         {step === "upload" && renderUploadStep()}
         {step === "people" && renderPeopleStep()}
         {step === "assign" && renderAssignStep()}
