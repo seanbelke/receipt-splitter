@@ -25,7 +25,8 @@ function makeImageFile(): File {
 }
 
 function makeClient(response: MockResponse | Error): ResponseClient {
-  const create = (async (_params: Parameters<OpenAI["responses"]["create"]>[0]) => {
+  const create = (async (...args: Parameters<OpenAI["responses"]["create"]>) => {
+    void args;
     if (response instanceof Error) {
       throw response;
     }
