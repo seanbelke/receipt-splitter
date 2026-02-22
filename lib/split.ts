@@ -1,4 +1,4 @@
-import { AssignableUnit, ParsedReceipt, PersonTotal } from "@/lib/types";
+import type { AssignableUnit, ParsedReceipt, PersonTotal } from "./types.ts";
 
 export function moneyFromCents(cents: number): string {
   return (cents / 100).toFixed(2);
