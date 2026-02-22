@@ -22,6 +22,42 @@ function stepIndex(step: Step): number {
   return { upload: 1, people: 2, assign: 3, results: 4 }[step];
 }
 
+type IconProps = { className?: string };
+
+function UploadIcon({ className = "h-4 w-4" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+      <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0 4 4m-4-4-4 4M5 14.5v3A2.5 2.5 0 0 0 7.5 20h9a2.5 2.5 0 0 0 2.5-2.5v-3" />
+    </svg>
+  );
+}
+
+function UsersIcon({ className = "h-4 w-4" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+      <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1m18 0v-1a4 4 0 0 0-3-3.87M9.5 7a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm8 1a3 3 0 0 1 0 6" />
+    </svg>
+  );
+}
+
+function AssignIcon({ className = "h-4 w-4" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+      <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M15.5 8.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z" />
+      <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M4.5 19v-1a4.5 4.5 0 0 1 4.5-4.5h4.5" />
+      <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="m16.5 15.5 2 2 3.5-4" />
+    </svg>
+  );
+}
+
+function ResultIcon({ className = "h-4 w-4" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+      <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M7 13h10M7 9h6m-6 8h8M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" />
+    </svg>
+  );
+}
+
 export default function HomePage() {
   const [step, setStep] = useState<Step>("upload");
   const [file, setFile] = useState<File | null>(null);
@@ -321,27 +357,30 @@ export default function HomePage() {
     return (
       <form onSubmit={parseReceipt} className="space-y-6">
         <div>
-          <p className="text-sm uppercase tracking-[0.24em] text-teal-800">
+          <p className="step-kicker flex items-center gap-2">
+            <span className="icon-badge">
+              <UploadIcon />
+            </span>
             Step 1
           </p>
           <h1 className="mt-2 text-4xl font-semibold leading-tight">
             Upload a receipt photo.
           </h1>
-          <p className="mt-3 text-sm text-gray-700">
+          <p className="mt-3 text-sm text-slate-600">
             We will parse line items, quantity rows, tax, and tip so you can
             quickly assign who ate each item.
           </p>
         </div>
 
-        <label className="block rounded-2xl border border-dashed border-gray-400 bg-white p-6">
-          <span className="mb-2 block text-sm text-gray-800">
+        <label className="block rounded-2xl border border-dashed border-slate-400/70 bg-white/90 p-6">
+          <span className="mb-2 block text-sm font-medium text-slate-700">
             Receipt Image (jpg, png, etc.)
           </span>
           <input type="file" accept="image/*" onChange={onFileChange} />
         </label>
 
         {file && (
-          <p className="mono text-sm text-gray-600">
+          <p className="mono rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
             Selected: {file.name} ({Math.round(file.size / 1024)} KB)
           </p>
         )}
@@ -349,8 +388,9 @@ export default function HomePage() {
         <button
           type="submit"
           disabled={!file || isParsing}
-          className="rounded-xl bg-teal-700 px-5 py-3 text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-gray-400"
+          className="primary-btn inline-flex items-center gap-2 px-5 py-3"
         >
+          <UploadIcon />
           {isParsing ? "Parsing receipt..." : "Parse receipt"}
         </button>
       </form>
@@ -365,7 +405,10 @@ export default function HomePage() {
     return (
       <div className="space-y-7">
         <div>
-          <p className="text-sm uppercase tracking-[0.24em] text-teal-800">
+          <p className="step-kicker flex items-center gap-2">
+            <span className="icon-badge">
+              <UsersIcon />
+            </span>
             Step 2
           </p>
           <h2 className="mt-2 text-3xl font-semibold">
@@ -373,18 +416,18 @@ export default function HomePage() {
           </h2>
         </div>
 
-        <div className="rounded-2xl border border-gray-300 bg-white p-5">
-          <p className="text-sm text-gray-700">
+        <div className="soft-card rounded-2xl p-5">
+          <p className="text-sm text-slate-700">
             Parsed {receipt.items.length} rows into {units.length} assignable
             units. Currency: {receipt.currency}.
           </p>
-          <div className="mt-3 space-y-1 text-sm text-gray-600">
+          <div className="mt-3 space-y-1 text-sm text-slate-600">
             <p>Subtotal: ${moneyFromCents(overallSubtotal)}</p>
             <p>Tax: ${moneyFromCents(taxCents)}</p>
             <p>Tip: ${moneyFromCents(tipCents)}</p>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <label className="text-sm">
+            <label className="text-sm font-medium text-slate-700">
               Tax ($)
               <input
                 type="number"
@@ -392,10 +435,10 @@ export default function HomePage() {
                 step="0.01"
                 defaultValue={moneyFromCents(taxCents)}
                 onChange={(e) => setTaxCents(toCents(e.target.value))}
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+                className="input-field mt-1"
               />
             </label>
-            <label className="text-sm">
+            <label className="text-sm font-medium text-slate-700">
               Tip ($)
               <input
                 type="number"
@@ -403,14 +446,14 @@ export default function HomePage() {
                 step="0.01"
                 defaultValue={moneyFromCents(tipCents)}
                 onChange={(e) => setTipCents(toCents(e.target.value))}
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+                className="input-field mt-1"
               />
             </label>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-300 bg-white p-5">
-          <p className="mb-3 text-sm text-gray-700">
+        <div className="soft-card rounded-2xl p-5">
+          <p className="mb-3 text-sm text-slate-700">
             People (names must be unique):
           </p>
           <div className="flex flex-wrap gap-2">
@@ -418,13 +461,13 @@ export default function HomePage() {
               <button
                 key={person}
                 onClick={() => removePerson(person)}
-                className="rounded-full bg-teal-50 px-3 py-1 text-sm text-teal-900 hover:bg-red-50 hover:text-red-900"
+                className="rounded-full bg-teal-50 px-3 py-1 text-sm text-teal-900 transition hover:bg-rose-50 hover:text-rose-900"
               >
                 {person} ×
               </button>
             ))}
             {people.length === 0 && (
-              <p className="text-sm text-gray-500">No people added yet.</p>
+              <p className="text-sm text-slate-500">No people added yet.</p>
             )}
           </div>
 
@@ -437,12 +480,13 @@ export default function HomePage() {
               value={newPerson}
               onChange={(e) => setNewPerson(e.target.value)}
               placeholder="Add a name"
-              className="flex-1 rounded-lg border border-gray-300 px-3 py-2"
+              className="input-field flex-1"
             />
             <button
               type="submit"
-              className="rounded-lg border border-teal-700 px-4 py-2 text-teal-800 hover:bg-teal-50"
+              className="secondary-btn inline-flex items-center gap-2 px-4 py-2"
             >
+              <UsersIcon />
               Add person
             </button>
           </form>
@@ -451,8 +495,9 @@ export default function HomePage() {
         <button
           onClick={() => setStep("assign")}
           disabled={people.length === 0}
-          className="rounded-xl bg-teal-700 px-5 py-3 text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-gray-400"
+          className="primary-btn inline-flex items-center gap-2 px-5 py-3"
         >
+          <AssignIcon />
           Start assigning items
         </button>
       </div>
@@ -463,16 +508,19 @@ export default function HomePage() {
     if (people.length === 0) {
       return (
         <div className="space-y-4">
-          <p className="text-sm uppercase tracking-[0.24em] text-teal-800">
+          <p className="step-kicker flex items-center gap-2">
+            <span className="icon-badge">
+              <AssignIcon />
+            </span>
             Step 3
           </p>
           <h2 className="text-3xl font-semibold">Assign each item.</h2>
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-slate-700">
             Add at least one person before assigning items.
           </p>
           <button
             onClick={() => setStep("people")}
-            className="rounded-lg border border-gray-400 px-4 py-2"
+            className="secondary-btn px-4 py-2"
           >
             Back to people
           </button>
@@ -514,26 +562,29 @@ export default function HomePage() {
     return (
       <div className="space-y-7">
         <div>
-          <p className="text-sm uppercase tracking-[0.24em] text-teal-800">
+          <p className="step-kicker flex items-center gap-2">
+            <span className="icon-badge">
+              <AssignIcon />
+            </span>
             Step 3
           </p>
           <h2 className="mt-2 text-3xl font-semibold">Assign each item.</h2>
-          <p className="mt-2 text-sm text-gray-700">
+          <p className="mt-2 text-sm text-slate-700">
             {assignMode === "byItem"
               ? `Item ${currentUnitIndex + 1} of ${units.length}`
               : `Person ${currentPersonIndex + 1} of ${people.length}`}
           </p>
         </div>
 
-        <div className="rounded-2xl border border-gray-300 bg-white p-4">
-          <p className="text-sm text-gray-600">Assignment mode</p>
+        <div className="soft-card rounded-2xl p-4">
+          <p className="text-sm text-slate-600">Assignment mode</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               onClick={() => setAssignMode("byItem")}
               className={`rounded-lg px-4 py-2 text-sm transition ${
                 assignMode === "byItem"
-                  ? "bg-teal-700 text-white"
-                  : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                  ? "bg-teal-700 text-white shadow-sm"
+                  : "bg-slate-100 text-slate-800 hover:bg-slate-200"
               }`}
             >
               View each item
@@ -542,8 +593,8 @@ export default function HomePage() {
               onClick={() => setAssignMode("byPerson")}
               className={`rounded-lg px-4 py-2 text-sm transition ${
                 assignMode === "byPerson"
-                  ? "bg-teal-700 text-white"
-                  : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                  ? "bg-teal-700 text-white shadow-sm"
+                  : "bg-slate-100 text-slate-800 hover:bg-slate-200"
               }`}
             >
               View each person
@@ -553,14 +604,14 @@ export default function HomePage() {
 
         <div className="grid gap-4 lg:grid-cols-[15rem_1fr] lg:items-start">
           <aside
-            className="rounded-2xl border border-gray-300 bg-white p-3 lg:flex lg:min-h-[32rem] lg:flex-col"
+            className="soft-card rounded-2xl p-3 lg:flex lg:min-h-[32rem] lg:flex-col"
             style={
               assignPanelHeight
                 ? { maxHeight: `${assignPanelHeight}px` }
                 : undefined
             }
           >
-            <p className="px-2 pb-2 text-xs uppercase tracking-[0.16em] text-gray-500">
+            <p className="px-2 pb-2 text-xs uppercase tracking-[0.16em] text-slate-500">
               {isByItem ? "Jump to item" : "Jump to person"}
             </p>
             <div className="flex gap-2 overflow-x-auto pb-1 lg:flex-1 lg:min-h-0 lg:flex-col lg:overflow-y-auto lg:overflow-x-visible">
@@ -571,13 +622,13 @@ export default function HomePage() {
                   className={`min-w-44 rounded-xl px-3 py-2 text-left text-sm transition lg:min-w-0 ${
                     entry.isActive
                       ? "bg-teal-700 text-white"
-                      : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                      : "bg-slate-100 text-slate-800 hover:bg-slate-200"
                   }`}
                 >
                   <p className="truncate font-medium">{entry.title}</p>
                   <div
                     className={`mt-1 flex items-center justify-between text-xs ${
-                      entry.isActive ? "text-teal-50" : "text-gray-600"
+                      entry.isActive ? "text-teal-50" : "text-slate-600"
                     }`}
                   >
                     <span className="truncate">{entry.subtitle}</span>
@@ -591,9 +642,9 @@ export default function HomePage() {
           {isByItem ? (
             <div
               ref={assignContentPanelRef}
-              className="rounded-2xl border border-gray-300 bg-white p-6 lg:min-h-[32rem] lg:self-start"
+              className="soft-card rounded-2xl p-6 lg:min-h-[32rem] lg:self-start"
             >
-              <p className="text-sm text-gray-500">Current item</p>
+              <p className="text-sm text-slate-500">Current item</p>
               <h3 className="mt-1 text-2xl font-semibold">
                 {currentUnit.label}
               </h3>
@@ -611,7 +662,7 @@ export default function HomePage() {
                       className={`rounded-full px-4 py-2 text-sm transition ${
                         selected
                           ? "bg-teal-700 text-white"
-                          : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                          : "bg-slate-100 text-slate-800 hover:bg-slate-200"
                       }`}
                     >
                       {person}
@@ -623,17 +674,17 @@ export default function HomePage() {
               <div className="mt-4 flex flex-wrap gap-2">
                 <button
                   onClick={selectAllForCurrentUnit}
-                  className="rounded-lg border border-teal-700 px-3 py-2 text-sm text-teal-900"
+                  className="secondary-btn px-3 py-2 text-sm text-teal-900"
                 >
                   Select all
                 </button>
                 <button
                   onClick={clearForCurrentUnit}
-                  className="rounded-lg border border-gray-400 px-3 py-2 text-sm text-gray-700"
+                  className="secondary-btn px-3 py-2 text-sm text-slate-700"
                 >
                   Clear
                 </button>
-                <p className="self-center text-sm text-gray-600">
+                <p className="self-center text-sm text-slate-600">
                   Selected: {selectedCount}
                 </p>
               </div>
@@ -641,11 +692,11 @@ export default function HomePage() {
           ) : (
             <div
               ref={assignContentPanelRef}
-              className="rounded-2xl border border-gray-300 bg-white p-6 lg:min-h-[32rem] lg:self-start"
+              className="soft-card rounded-2xl p-6 lg:min-h-[32rem] lg:self-start"
             >
-              <p className="text-sm text-gray-500">Current person</p>
+              <p className="text-sm text-slate-500">Current person</p>
               <h3 className="mt-1 text-2xl font-semibold">{currentPerson}</h3>
-              <p className="mt-1 text-sm text-gray-700">
+              <p className="mt-1 text-sm text-slate-700">
                 Select every item this person is sharing. Selected items:{" "}
                 {selectedItemCountForCurrentPerson}
               </p>
@@ -662,7 +713,7 @@ export default function HomePage() {
                       className={`flex items-center justify-between rounded-xl px-4 py-3 text-left text-sm transition ${
                         selected
                           ? "bg-teal-700 text-white"
-                          : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                          : "bg-slate-100 text-slate-800 hover:bg-slate-200"
                       }`}
                     >
                       <span>{unit.label}</span>
@@ -677,13 +728,13 @@ export default function HomePage() {
               <div className="mt-4 flex flex-wrap gap-2">
                 <button
                   onClick={selectAllItemsForCurrentPerson}
-                  className="rounded-lg border border-teal-700 px-3 py-2 text-sm text-teal-900"
+                  className="secondary-btn px-3 py-2 text-sm text-teal-900"
                 >
                   Select all items
                 </button>
                 <button
                   onClick={clearAllItemsForCurrentPerson}
-                  className="rounded-lg border border-gray-400 px-3 py-2 text-sm text-gray-700"
+                  className="secondary-btn px-3 py-2 text-sm text-slate-700"
                 >
                   Clear all items
                 </button>
@@ -704,7 +755,7 @@ export default function HomePage() {
                 ? currentUnitIndex === 0
                 : currentPersonIndex === 0
             }
-            className="rounded-lg border border-gray-400 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
+            className="secondary-btn px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Previous
           </button>
@@ -719,15 +770,16 @@ export default function HomePage() {
                 ? currentUnitIndex === units.length - 1
                 : currentPersonIndex === people.length - 1
             }
-            className="rounded-lg border border-gray-400 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
+            className="secondary-btn px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Next
           </button>
           <button
             onClick={() => setStep("results")}
             disabled={!allItemsAssigned}
-            className="rounded-lg bg-teal-700 px-4 py-2 text-white disabled:cursor-not-allowed disabled:bg-gray-400"
+            className="primary-btn inline-flex items-center gap-2 px-4 py-2"
           >
+            <ResultIcon />
             See results
           </button>
         </div>
@@ -741,23 +793,26 @@ export default function HomePage() {
     return (
       <div className="space-y-7">
         <div>
-          <p className="text-sm uppercase tracking-[0.24em] text-teal-800">
+          <p className="step-kicker flex items-center gap-2">
+            <span className="icon-badge">
+              <ResultIcon />
+            </span>
             Step 4
           </p>
           <h2 className="mt-2 text-3xl font-semibold">Final split.</h2>
         </div>
 
-        <div className="rounded-2xl border border-gray-300 bg-white p-5">
-          <p className="mono text-sm text-gray-700">
+        <div className="soft-card rounded-2xl p-5">
+          <p className="mono text-sm text-slate-700">
             Receipt total: ${moneyFromCents(overallTotal)}
           </p>
-          <p className="mono text-sm text-gray-700">
+          <p className="mono text-sm text-slate-700">
             Subtotal: ${moneyFromCents(overallSubtotal)}
           </p>
-          <p className="mono text-sm text-gray-700">
+          <p className="mono text-sm text-slate-700">
             Tax: ${moneyFromCents(taxCents)}
           </p>
-          <p className="mono text-sm text-gray-700">
+          <p className="mono text-sm text-slate-700">
             Tip: ${moneyFromCents(tipCents)}
           </p>
         </div>
@@ -766,7 +821,7 @@ export default function HomePage() {
           {totals.map((person) => (
             <div
               key={person.name}
-              className="rounded-2xl border border-gray-300 bg-white p-5"
+              className="soft-card rounded-2xl p-5"
             >
               <h3 className="text-xl font-semibold">{person.name}</h3>
               <p className="mono mt-2 text-sm">
@@ -787,7 +842,7 @@ export default function HomePage() {
 
         <button
           onClick={() => setStep("assign")}
-          className="rounded-lg border border-gray-400 px-4 py-2"
+          className="secondary-btn px-4 py-2"
         >
           Back to assignment
         </button>
@@ -796,19 +851,41 @@ export default function HomePage() {
   }
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
+    <main className="mx-auto min-h-screen w-full max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="mb-8">
-        <p className="mono text-xs uppercase tracking-[0.18em] text-gray-500">
+        <p className="mono text-xs uppercase tracking-[0.18em] text-slate-500">
           Receipt Splitter
         </p>
-        <p className="mt-1 text-sm text-gray-700">
+        <p className="mt-1 text-sm text-slate-700">
           Progress: Step {stepIndex(step)} of 4
         </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {(["upload", "people", "assign", "results"] as Step[]).map(
+            (stepName) => {
+              const isCurrent = stepName === step;
+              const isDone = stepIndex(stepName) < stepIndex(step);
+              return (
+                <div
+                  key={stepName}
+                  className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${
+                    isCurrent
+                      ? "bg-teal-700 text-white"
+                      : isDone
+                        ? "bg-teal-100 text-teal-900"
+                        : "bg-slate-200/70 text-slate-600"
+                  }`}
+                >
+                  {stepName}
+                </div>
+              );
+            },
+          )}
+        </div>
       </div>
 
-      <section className="rounded-3xl border border-gray-300 bg-white/80 p-6 shadow-sm sm:p-8">
+      <section className="surface-panel rounded-3xl p-6 sm:p-8">
         {error && (
-          <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">
+          <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
             {error}
           </p>
         )}
