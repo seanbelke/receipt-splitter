@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type OpenAI from "openai";
 import { parseReceiptRequest } from "./parse-receipt.ts";
+import type { ResponseClient } from "./parse-receipt.ts";
 
 type MockResponse = { output_text?: string | null };
 
@@ -22,22 +24,15 @@ function makeImageFile(): File {
   });
 }
 
-function makeClient(response: MockResponse | Error) {
-  if (response instanceof Error) {
-    return {
-      responses: {
-        create: async () => {
-          throw response;
-        },
-      },
-    };
-  }
+function makeClient(response: MockResponse | Error): ResponseClient {
+  const create = (async (_params: Parameters<OpenAI["responses"]["create"]>[0]) => {
+    if (response instanceof Error) {
+      throw response;
+    }
+    return response;
+  }) as OpenAI["responses"]["create"];
 
-  return {
-    responses: {
-      create: async () => response,
-    },
-  };
+  return { responses: { create } };
 }
 
 test("parseReceiptRequest returns 400 when receipt file is missing", async () => {

@@ -1,4 +1,5 @@
 import { normalizeReceipt } from "./receipt-normalization.ts";
+import type OpenAI from "openai";
 import type { ParsedReceipt } from "./types.ts";
 
 const RECEIPT_SCHEMA = {
@@ -27,9 +28,7 @@ const RECEIPT_SCHEMA = {
 } as const;
 
 export type ResponseClient = {
-  responses: {
-    create: (params: object) => Promise<{ output_text?: string | null }>;
-  };
+  responses: Pick<OpenAI["responses"], "create">;
 };
 
 export async function parseReceiptRequest(
