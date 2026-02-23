@@ -1347,7 +1347,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="soft-card overflow-x-auto rounded-2xl p-3 sm:p-4">
+        <div className="overflow-x-auto">
           <table className="min-w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-slate-300">
