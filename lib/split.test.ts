@@ -46,7 +46,7 @@ test("expandItemsToUnits falls back to quantity 1 when quantity is invalid", () 
   assert.equal(units[0].amountCents, 250);
 });
 
-test("calculateTotals splits shared units deterministically and sorts by person name", () => {
+test("calculateTotals splits shared units deterministically in entered person order", () => {
   const totals = calculateTotals({
     people: ["Bob", "Alice"],
     units: [{ id: "u1", label: "Nachos", amountCents: 101, sourceItemName: "Nachos", sourceRowIndex: 0, unitIndex: 0 }],
@@ -57,14 +57,14 @@ test("calculateTotals splits shared units deterministically and sorts by person 
 
   assert.deepEqual(totals, [
     {
-      name: "Alice",
+      name: "Bob",
       subtotalCents: 51,
       taxShareCents: 1,
       tipShareCents: 1,
       totalCents: 53,
     },
     {
-      name: "Bob",
+      name: "Alice",
       subtotalCents: 50,
       taxShareCents: 0,
       tipShareCents: 0,
@@ -117,14 +117,14 @@ test("calculateTotals falls back to equal split for tax/tip when all subtotals a
 
   assert.deepEqual(totals, [
     {
-      name: "Alice",
+      name: "Bob",
       subtotalCents: 0,
       taxShareCents: 2,
       tipShareCents: 1,
       totalCents: 3,
     },
     {
-      name: "Bob",
+      name: "Alice",
       subtotalCents: 0,
       taxShareCents: 1,
       tipShareCents: 0,
@@ -150,14 +150,14 @@ test("calculateSplitBreakdown returns per-unit math details and person shares", 
 
   assert.deepEqual(breakdown.personTotals, [
     {
-      name: "Alice",
+      name: "Bob",
       subtotalCents: 51,
       taxShareCents: 1,
       tipShareCents: 1,
       totalCents: 53,
     },
     {
-      name: "Bob",
+      name: "Alice",
       subtotalCents: 50,
       taxShareCents: 0,
       tipShareCents: 0,
@@ -170,10 +170,10 @@ test("calculateSplitBreakdown returns per-unit math details and person shares", 
       unitId: "u1",
       label: "Nachos",
       amountCents: 101,
-      assignedPeople: ["Alice", "Bob"],
+      assignedPeople: ["Bob", "Alice"],
       perPersonShares: [
-        { name: "Alice", amountCents: 51 },
-        { name: "Bob", amountCents: 50 },
+        { name: "Bob", amountCents: 51 },
+        { name: "Alice", amountCents: 50 },
       ],
     },
     {
@@ -186,15 +186,15 @@ test("calculateSplitBreakdown returns per-unit math details and person shares", 
   ]);
 
   assert.deepEqual(breakdown.subtotalShares, [
-    { name: "Alice", amountCents: 51 },
-    { name: "Bob", amountCents: 50 },
+    { name: "Bob", amountCents: 51 },
+    { name: "Alice", amountCents: 50 },
   ]);
   assert.deepEqual(breakdown.taxShares, [
-    { name: "Alice", amountCents: 1 },
-    { name: "Bob", amountCents: 0 },
+    { name: "Bob", amountCents: 1 },
+    { name: "Alice", amountCents: 0 },
   ]);
   assert.deepEqual(breakdown.tipShares, [
-    { name: "Alice", amountCents: 1 },
-    { name: "Bob", amountCents: 0 },
+    { name: "Bob", amountCents: 1 },
+    { name: "Alice", amountCents: 0 },
   ]);
 });
