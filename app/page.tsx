@@ -835,6 +835,13 @@ export default function HomePage() {
         </div>
 
         <form onSubmit={parseReceipt} className="space-y-4">
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-slate-900">
+              Upload a receipt
+            </h3>
+            <hr className="border-slate-200/90" />
+          </div>
+
           <label className="block rounded-2xl border border-dashed border-slate-400/70 bg-white/90 p-6">
             <span className="mb-2 block text-sm font-medium text-slate-700">
               Receipt image
@@ -932,52 +939,11 @@ export default function HomePage() {
           </button>
         </form>
 
-        <div className="soft-card rounded-2xl p-5">
-          {receipt ? (
-            <>
-              <p className="text-sm text-slate-700">
-                Parsed {receipt.items.length} rows into {units.length}{" "}
-                assignable units. Currency: {receipt.currency}.
-              </p>
-              <div className="mt-3 space-y-1 text-sm text-slate-600">
-                <p>Subtotal: ${moneyFromCents(overallSubtotal)}</p>
-                <p>Tax: ${moneyFromCents(taxCents)}</p>
-                <p>Tip: ${moneyFromCents(tipCents)}</p>
-              </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <label className="text-sm font-medium text-slate-700">
-                  Tax ($)
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={(taxCents / 100).toFixed(2)}
-                    onChange={(e) => setTaxCents(toCents(e.target.value))}
-                    className="input-field mt-1"
-                  />
-                </label>
-                <label className="text-sm font-medium text-slate-700">
-                  Tip ($)
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={(tipCents / 100).toFixed(2)}
-                    onChange={(e) => setTipCents(toCents(e.target.value))}
-                    className="input-field mt-1"
-                  />
-                </label>
-              </div>
-            </>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-sm text-slate-700">
-                {isParsing
-                  ? "Parsing receipt in the background. You can add everyone'snames now."
-                  : "Receipt has not been parsed yet. Choose a photo and parse when ready."}
-              </p>
-            </div>
-          )}
+        <div className="space-y-2">
+          <h3 className="text-lg font-semibold text-slate-900">
+            Add everyone&apos;s names
+          </h3>
+          <hr className="border-slate-200/90" />
         </div>
 
         <div className="soft-card rounded-2xl p-5">
@@ -1019,6 +985,87 @@ export default function HomePage() {
             </button>
           </form>
         </div>
+
+        <div className="space-y-2">
+          <h3 className="text-lg font-semibold text-slate-900">
+            Preview parsed receipt
+          </h3>
+          <hr className="border-slate-200/90" />
+        </div>
+
+        <section className="space-y-3">
+          {receipt ? (
+            <>
+              <p className="text-sm text-slate-700">
+                Parsed {receipt.items.length} rows into {units.length}{" "}
+                assignable units. Currency: {receipt.currency}.
+              </p>
+              <div className="space-y-1 text-sm text-slate-600">
+                <p>Subtotal: ${moneyFromCents(overallSubtotal)}</p>
+                <p>Tax: ${moneyFromCents(taxCents)}</p>
+                <p>Tip: ${moneyFromCents(tipCents)}</p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="text-sm font-medium text-slate-700">
+                  Tax ($)
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={(taxCents / 100).toFixed(2)}
+                    onChange={(e) => setTaxCents(toCents(e.target.value))}
+                    className="input-field mt-1"
+                  />
+                </label>
+                <label className="text-sm font-medium text-slate-700">
+                  Tip ($)
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={(tipCents / 100).toFixed(2)}
+                    onChange={(e) => setTipCents(toCents(e.target.value))}
+                    className="input-field mt-1"
+                  />
+                </label>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-300">
+                      <th className="px-3 py-2 text-left font-semibold text-slate-700">
+                        Item
+                      </th>
+                      <th className="px-3 py-2 text-left font-semibold text-slate-700">
+                        Qty
+                      </th>
+                      <th className="px-3 py-2 text-right font-semibold text-slate-700">
+                        Row total
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {receipt.items.map((item, index) => (
+                      <tr key={`${item.name}-${index}`} className="border-b border-slate-200">
+                        <td className="px-3 py-2 text-slate-800">{item.name}</td>
+                        <td className="px-3 py-2 text-slate-600">{item.quantity}</td>
+                        <td className="mono px-3 py-2 text-right text-slate-700">
+                          ${moneyFromCents(item.totalPriceCents)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-slate-700">
+              {isParsing
+                ? "Parsing receipt in the background. You can add everyone's names now."
+                : "Receipt has not been parsed yet. Choose a photo and parse when ready."}
+            </p>
+          )}
+        </section>
 
         <button
           onClick={() => setStep("assign")}
