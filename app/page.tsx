@@ -160,19 +160,7 @@ function buildHtmlReport(params: {
     taxCents,
     tipCents,
   } = params;
-  const overallTotal = overallSubtotal + taxCents + tipCents;
   const generatedAt = new Date(generatedAtIso).toLocaleString();
-
-  const receiptRows = receipt.items
-    .map(
-      (item) =>
-        `<tr>
-          <td>${escapeHtml(item.name)}</td>
-          <td>${item.quantity}</td>
-          <td class="mono">$${moneyFromCents(item.totalPriceCents)}</td>
-        </tr>`,
-    )
-    .join("");
 
   const unitRows = breakdown.unitAllocations
     .map((unit) => {
@@ -198,7 +186,7 @@ function buildHtmlReport(params: {
     })
     .join("");
 
-  const personRows = breakdown.personTotals
+  const overviewRows = breakdown.personTotals
     .map(
       (person) => `<tr>
         <td>${escapeHtml(person.name)}</td>
@@ -207,20 +195,6 @@ function buildHtmlReport(params: {
         <td class="mono">$${moneyFromCents(person.tipShareCents)}</td>
         <td class="mono strong">$${moneyFromCents(person.totalCents)}</td>
       </tr>`,
-    )
-    .join("");
-
-  const taxShareRows = breakdown.taxShares
-    .map(
-      (share) =>
-        `<tr><td>${escapeHtml(share.name)}</td><td class="mono">$${moneyFromCents(share.amountCents)}</td></tr>`,
-    )
-    .join("");
-
-  const tipShareRows = breakdown.tipShares
-    .map(
-      (share) =>
-        `<tr><td>${escapeHtml(share.name)}</td><td class="mono">$${moneyFromCents(share.amountCents)}</td></tr>`,
     )
     .join("");
 
@@ -255,16 +229,6 @@ function buildHtmlReport(params: {
     .meta { color: #334155; font-size: 14px; }
     .mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
     .strong { font-weight: 700; }
-    .actions { margin-top: 12px; }
-    .print-btn {
-      border: 1px solid #0f766e;
-      background: #0f766e;
-      color: white;
-      border-radius: 10px;
-      padding: 10px 14px;
-      cursor: pointer;
-      font-size: 14px;
-    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -281,15 +245,9 @@ function buildHtmlReport(params: {
       background: #f1f5f9;
       font-weight: 600;
     }
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
     @media (max-width: 800px) {
       body { padding: 10px; }
       .report { padding: 14px; }
-      .grid { grid-template-columns: 1fr; }
     }
     @media print {
       body {
@@ -301,7 +259,6 @@ function buildHtmlReport(params: {
         border-radius: 0;
         max-width: none;
       }
-      .actions { display: none; }
     }
   </style>
 </head>
@@ -311,51 +268,9 @@ function buildHtmlReport(params: {
     <p class="meta">Generated: ${escapeHtml(generatedAt)}</p>
     <p class="meta">Currency: ${escapeHtml(receipt.currency)}</p>
     ${receipt.restaurantName ? `<p class="meta">Restaurant: ${escapeHtml(receipt.restaurantName)}</p>` : ""}
-    <div class="actions"><button class="print-btn" onclick="window.print()">Print report</button></div>
 
-    <h2>Totals</h2>
-    <p class="mono">Subtotal: $${moneyFromCents(overallSubtotal)}</p>
-    <p class="mono">Tax: $${moneyFromCents(taxCents)}</p>
-    <p class="mono">Tip: $${moneyFromCents(tipCents)}</p>
-    <p class="mono strong">Total: $${moneyFromCents(overallTotal)}</p>
-
-    <h2>Line Items</h2>
-    <table>
-      <thead>
-        <tr><th>Item</th><th>Qty</th><th>Row Total</th></tr>
-      </thead>
-      <tbody>${receiptRows}</tbody>
-    </table>
-
-    <h2>Unit-Level Math</h2>
-    <p class="meta">Each unit is split evenly among assigned people, then rounded to cents deterministically.</p>
-    <table>
-      <thead>
-        <tr><th>Unit</th><th>Amount</th><th>Assigned People</th><th>Split Math</th></tr>
-      </thead>
-      <tbody>${unitRows}</tbody>
-    </table>
-
-    <h2>Tax and Tip Apportionment</h2>
-    <p class="meta">Tax and tip are apportioned by each person's food subtotal using weighted rounding.</p>
-    <div class="grid">
-      <div>
-        <h3>Tax Shares</h3>
-        <table>
-          <thead><tr><th>Person</th><th>Tax Share</th></tr></thead>
-          <tbody>${taxShareRows}</tbody>
-        </table>
-      </div>
-      <div>
-        <h3>Tip Shares</h3>
-        <table>
-          <thead><tr><th>Person</th><th>Tip Share</th></tr></thead>
-          <tbody>${tipShareRows}</tbody>
-        </table>
-      </div>
-    </div>
-
-    <h2>Final Amounts</h2>
+    <h2>Overview</h2>
+    <p class="meta">Subtotal: $${moneyFromCents(overallSubtotal)} • Tax: $${moneyFromCents(taxCents)} • Tip: $${moneyFromCents(tipCents)}</p>
     <table>
       <thead>
         <tr>
@@ -366,7 +281,16 @@ function buildHtmlReport(params: {
           <th>Total Owed</th>
         </tr>
       </thead>
-      <tbody>${personRows}</tbody>
+      <tbody>${overviewRows}</tbody>
+    </table>
+
+    <h2>Unit-Level Math For Each Item</h2>
+    <p class="meta">Each unit is split evenly among assigned people, then rounded to cents deterministically.</p>
+    <table>
+      <thead>
+        <tr><th>Unit</th><th>Amount</th><th>Assigned People</th><th>Split Math</th></tr>
+      </thead>
+      <tbody>${unitRows}</tbody>
     </table>
   </div>
 </body>
@@ -1420,33 +1344,50 @@ export default function HomePage() {
             >
               View HTML report
             </button>
-            <button
-              onClick={printHtmlReport}
-              className="secondary-btn px-4 py-2"
-            >
-              Print report
-            </button>
           </div>
         </div>
 
-        <div className="grid gap-3">
-          {totals.map((person) => (
-            <div key={person.name} className="soft-card rounded-2xl p-5">
-              <h3 className="text-xl font-semibold">{person.name}</h3>
-              <p className="mono mt-2 text-sm">
-                Food: ${moneyFromCents(person.subtotalCents)}
-              </p>
-              <p className="mono text-sm">
-                Tax share: ${moneyFromCents(person.taxShareCents)}
-              </p>
-              <p className="mono text-sm">
-                Tip share: ${moneyFromCents(person.tipShareCents)}
-              </p>
-              <p className="mono mt-2 text-lg font-semibold">
-                Owes: ${moneyFromCents(person.totalCents)}
-              </p>
-            </div>
-          ))}
+        <div className="soft-card overflow-x-auto rounded-2xl p-3 sm:p-4">
+          <table className="min-w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-slate-300">
+                <th className="px-3 py-2 text-left font-semibold text-slate-700">
+                  Person
+                </th>
+                <th className="px-3 py-2 text-right font-semibold text-slate-700">
+                  Food subtotal
+                </th>
+                <th className="px-3 py-2 text-right font-semibold text-slate-700">
+                  Tax share
+                </th>
+                <th className="px-3 py-2 text-right font-semibold text-slate-700">
+                  Tip share
+                </th>
+                <th className="px-3 py-2 text-right font-semibold text-slate-700">
+                  Total owed
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {totals.map((person) => (
+                <tr key={person.name} className="border-b border-slate-200">
+                  <td className="px-3 py-2 text-slate-800">{person.name}</td>
+                  <td className="mono px-3 py-2 text-right text-slate-700">
+                    ${moneyFromCents(person.subtotalCents)}
+                  </td>
+                  <td className="mono px-3 py-2 text-right text-slate-700">
+                    ${moneyFromCents(person.taxShareCents)}
+                  </td>
+                  <td className="mono px-3 py-2 text-right text-slate-700">
+                    ${moneyFromCents(person.tipShareCents)}
+                  </td>
+                  <td className="mono px-3 py-2 text-right font-semibold text-slate-900">
+                    ${moneyFromCents(person.totalCents)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         <button
