@@ -1390,12 +1390,6 @@ export default function HomePage() {
           </table>
         </div>
 
-        <button
-          onClick={() => setStep("assign")}
-          className="secondary-btn px-4 py-2"
-        >
-          Back to assignment
-        </button>
       </div>
     );
   }
