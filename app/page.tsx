@@ -14,16 +14,21 @@ import {
   expandItemsToUnits,
   moneyFromCents,
 } from "@/lib/split";
-import { AssignableUnit, ParsedReceipt, SplitBreakdown } from "@/lib/types";
+import {
+  AssignableUnit,
+  ChatClaimsPrefill,
+  ParsedReceipt,
+  SplitBreakdown,
+} from "@/lib/types";
 
-type Step = "setup" | "assign" | "results";
+type Step = "setup" | "claims" | "assign" | "results";
 type AssignMode = "byItem" | "byPerson";
 
 function stepIndex(step: Step): number {
-  return { setup: 1, assign: 2, results: 3 }[step];
+  return { setup: 1, claims: 2, assign: 3, results: 4 }[step];
 }
 
-const STEP_ORDER: Step[] = ["setup", "assign", "results"];
+const STEP_ORDER: Step[] = ["setup", "claims", "assign", "results"];
 
 type IconProps = { className?: string };
 
@@ -93,6 +98,30 @@ function AssignIcon({ className = "h-4 w-4" }: IconProps) {
   );
 }
 
+function ChatIcon({ className = "h-4 w-4" }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      className={className}
+    >
+      <path
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M6.5 17.5H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2.5"
+      />
+      <path
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M8 20v-2.5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2V22l-4-2H10a2 2 0 0 1-2-2.5Z"
+      />
+    </svg>
+  );
+}
+
 function ResultIcon({ className = "h-4 w-4" }: IconProps) {
   return (
     <svg
@@ -130,6 +159,48 @@ function TrashIcon({ className = "h-4 w-4" }: IconProps) {
         strokeLinecap="round"
         strokeLinejoin="round"
         d="M6 7l1 12h10l1-12"
+      />
+    </svg>
+  );
+}
+
+function EditIcon({ className = "h-4 w-4" }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      className={className}
+    >
+      <path
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4 20h4l10-10a2 2 0 0 0-4-4L4 16v4Z"
+      />
+      <path
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="m12 8 4 4"
+      />
+    </svg>
+  );
+}
+
+function CheckIcon({ className = "h-4 w-4" }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      className={className}
+    >
+      <path
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="m5 13 4 4L19 7"
       />
     </svg>
   );
@@ -311,13 +382,24 @@ export default function HomePage() {
   const [taxCents, setTaxCents] = useState(0);
   const [tipCents, setTipCents] = useState(0);
   const [isParsing, setIsParsing] = useState(false);
+  const [isParsingChatClaims, setIsParsingChatClaims] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
+  const [chatScreenshots, setChatScreenshots] = useState<File[]>([]);
+  const [chatScreenshotPreviewUrls, setChatScreenshotPreviewUrls] = useState<
+    string[]
+  >([]);
+  const [chatClaimsPrefill, setChatClaimsPrefill] =
+    useState<ChatClaimsPrefill | null>(null);
+  const [lastAppliedClaimCount, setLastAppliedClaimCount] = useState(0);
   const [reportHtmlPreview, setReportHtmlPreview] = useState<string | null>(
     null,
   );
   const [assignPanelHeight, setAssignPanelHeight] = useState<number | null>(
+    null,
+  );
+  const [editingItemRowIndex, setEditingItemRowIndex] = useState<number | null>(
     null,
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -329,6 +411,11 @@ export default function HomePage() {
     ? (assignments[currentUnit.id] ?? [])
     : [];
   const currentPerson = people[currentPersonIndex] ?? null;
+  const currentSourceRowIndex = currentUnit?.sourceRowIndex ?? null;
+  const currentSourceItem =
+    currentSourceRowIndex === null || !receipt
+      ? null
+      : receipt.items[currentSourceRowIndex] ?? null;
 
   const allItemsAssigned = useMemo(
     () =>
@@ -359,6 +446,16 @@ export default function HomePage() {
     () => units.reduce((sum, unit) => sum + unit.amountCents, 0),
     [units],
   );
+  const firstUnitIndexByRow = useMemo(() => {
+    const map = new Map<number, number>();
+    units.forEach((unit, index) => {
+      if (!map.has(unit.sourceRowIndex)) {
+        map.set(unit.sourceRowIndex, index);
+      }
+    });
+    return map;
+  }, [units]);
+  const claimedUnitCount = chatClaimsPrefill?.suggestions.length ?? 0;
 
   useEffect(() => {
     setCurrentUnitIndex((prev) =>
@@ -373,6 +470,15 @@ export default function HomePage() {
   }, [people.length]);
 
   useEffect(() => {
+    if (!receipt || editingItemRowIndex === null) {
+      return;
+    }
+    if (editingItemRowIndex >= receipt.items.length) {
+      setEditingItemRowIndex(null);
+    }
+  }, [receipt, editingItemRowIndex]);
+
+  useEffect(() => {
     if (!file) {
       setSelectedImageUrl(null);
       return;
@@ -385,6 +491,17 @@ export default function HomePage() {
       URL.revokeObjectURL(objectUrl);
     };
   }, [file]);
+
+  useEffect(() => {
+    const nextUrls = chatScreenshots.map((screenshot) =>
+      URL.createObjectURL(screenshot),
+    );
+    setChatScreenshotPreviewUrls(nextUrls);
+
+    return () => {
+      nextUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [chatScreenshots]);
 
   useEffect(() => {
     if (!isImagePreviewOpen) {
@@ -452,6 +569,10 @@ export default function HomePage() {
       setAssignments({});
       setTaxCents(0);
       setTipCents(0);
+      setEditingItemRowIndex(null);
+      setChatScreenshots([]);
+      setChatClaimsPrefill(null);
+      setLastAppliedClaimCount(0);
       setStep("setup");
     }
     if (!selected) {
@@ -467,12 +588,32 @@ export default function HomePage() {
     setAssignments({});
     setTaxCents(0);
     setTipCents(0);
+    setEditingItemRowIndex(null);
+    setChatScreenshots([]);
+    setChatClaimsPrefill(null);
+    setLastAppliedClaimCount(0);
     setStep("setup");
     setIsImagePreviewOpen(false);
     setError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+  }
+
+  function onChatScreenshotsChange(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []).filter((selectedFile) =>
+      selectedFile.type.startsWith("image/"),
+    );
+    setChatScreenshots(files);
+    setChatClaimsPrefill(null);
+    setLastAppliedClaimCount(0);
+    setError(null);
+  }
+
+  function removeChatScreenshot(index: number) {
+    setChatScreenshots((prev) => prev.filter((_, fileIndex) => fileIndex !== index));
+    setChatClaimsPrefill(null);
+    setLastAppliedClaimCount(0);
   }
 
   async function startReceiptParse() {
@@ -490,6 +631,9 @@ export default function HomePage() {
       setAssignments({});
       setTaxCents(0);
       setTipCents(0);
+      setEditingItemRowIndex(null);
+      setChatClaimsPrefill(null);
+      setLastAppliedClaimCount(0);
       setCurrentUnitIndex(0);
       setCurrentPersonIndex(0);
       setAssignMode("byItem");
@@ -526,6 +670,93 @@ export default function HomePage() {
     await startReceiptParse();
   }
 
+  async function parseChatClaims() {
+    if (!receipt || units.length === 0) {
+      setError("Parse your receipt before using chat claim pre-fill.");
+      return;
+    }
+    if (people.length === 0) {
+      setError("Add at least one person before using chat claim pre-fill.");
+      return;
+    }
+    if (chatScreenshots.length === 0) {
+      setError("Upload at least one group chat screenshot.");
+      return;
+    }
+
+    try {
+      setIsParsingChatClaims(true);
+      setError(null);
+      setLastAppliedClaimCount(0);
+
+      const formData = new FormData();
+      formData.append("people", JSON.stringify(people));
+      formData.append(
+        "units",
+        JSON.stringify(
+          units.map((unit) => ({
+            id: unit.id,
+            label: unit.label,
+            amountCents: unit.amountCents,
+          })),
+        ),
+      );
+      chatScreenshots.forEach((screenshot) =>
+        formData.append("screenshots", screenshot),
+      );
+
+      const res = await fetch("/api/parse-chat-claims", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = await res.json();
+      if (!res.ok) {
+        throw new Error(payload.error || "Failed to parse chat screenshots.");
+      }
+
+      setChatClaimsPrefill(payload.prefill as ChatClaimsPrefill);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to parse chat screenshots.",
+      );
+    } finally {
+      setIsParsingChatClaims(false);
+    }
+  }
+
+  function applyChatClaimPrefill() {
+    if (!chatClaimsPrefill) {
+      return;
+    }
+
+    const validUnitIds = new Set(units.map((unit) => unit.id));
+    const validPeople = new Set(people);
+    let appliedCount = 0;
+
+    setAssignments((prev) => {
+      const next = { ...prev };
+      chatClaimsPrefill.suggestions.forEach((suggestion) => {
+        if (!validUnitIds.has(suggestion.unitId)) {
+          return;
+        }
+        const filteredPeople = Array.from(
+          new Set(suggestion.people.filter((person) => validPeople.has(person))),
+        );
+        if (filteredPeople.length === 0) {
+          return;
+        }
+        next[suggestion.unitId] = filteredPeople;
+        appliedCount += 1;
+      });
+      return next;
+    });
+
+    setLastAppliedClaimCount(appliedCount);
+    setError(null);
+  }
+
   function addPerson() {
     const trimmed = newPerson.trim();
     if (!trimmed) {
@@ -543,6 +774,8 @@ export default function HomePage() {
     }
 
     setPeople((prev) => [...prev, trimmed]);
+    setChatClaimsPrefill(null);
+    setLastAppliedClaimCount(0);
     setNewPerson("");
     setError(null);
     newPersonInputRef.current?.focus();
@@ -555,6 +788,8 @@ export default function HomePage() {
 
   function removePerson(name: string) {
     setPeople((prev) => prev.filter((person) => person !== name));
+    setChatClaimsPrefill(null);
+    setLastAppliedClaimCount(0);
     setAssignments((prev) => {
       const next: Record<string, string[]> = {};
       Object.entries(prev).forEach(([unitId, names]) => {
@@ -670,6 +905,49 @@ export default function HomePage() {
       return 0;
     }
     return Math.round(numeric * 100);
+  }
+
+  function updateReceiptItem(
+    rowIndex: number,
+    updates: Partial<ParsedReceipt["items"][number]>,
+  ) {
+    setReceipt((prev) => {
+      if (!prev || !prev.items[rowIndex]) {
+        return prev;
+      }
+
+      const nextItems = prev.items.map((item, index) =>
+        index === rowIndex ? { ...item, ...updates } : item,
+      );
+      const nextReceipt = { ...prev, items: nextItems };
+      const nextUnits = expandItemsToUnits(nextReceipt);
+      setUnits(nextUnits);
+      setChatClaimsPrefill(null);
+      setLastAppliedClaimCount(0);
+      setAssignments((prevAssignments) => {
+        const validUnitIds = new Set(nextUnits.map((unit) => unit.id));
+        const nextAssignments: Record<string, string[]> = {};
+        Object.entries(prevAssignments).forEach(([unitId, names]) => {
+          if (validUnitIds.has(unitId)) {
+            nextAssignments[unitId] = names;
+          }
+        });
+        return nextAssignments;
+      });
+      return nextReceipt;
+    });
+  }
+
+  function jumpToItemRow(rowIndex: number, enableEdit = false) {
+    const unitIndex = firstUnitIndexByRow.get(rowIndex);
+    if (unitIndex === undefined) {
+      return;
+    }
+    setAssignMode("byItem");
+    setCurrentUnitIndex(unitIndex);
+    if (enableEdit) {
+      setEditingItemRowIndex(rowIndex);
+    }
   }
 
   function makeHtmlReport(): string | null {
@@ -969,15 +1247,70 @@ export default function HomePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {receipt.items.map((item, index) => (
-                      <tr key={`${item.name}-${index}`} className="border-b border-slate-200">
-                        <td className="px-3 py-2 text-slate-800">{item.name}</td>
-                        <td className="px-3 py-2 text-slate-600">{item.quantity}</td>
-                        <td className="mono px-3 py-2 text-right text-slate-700">
-                          ${moneyFromCents(item.totalPriceCents)}
-                        </td>
-                      </tr>
-                    ))}
+                    {receipt.items.map((item, index) => {
+                      const isEditing = editingItemRowIndex === index;
+                      return (
+                        <tr
+                          key={`${item.name}-${index}`}
+                          className="border-b border-slate-200"
+                        >
+                          <td className="px-3 py-2 text-slate-800">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={item.name}
+                                readOnly={!isEditing}
+                                onChange={(event) =>
+                                  updateReceiptItem(index, {
+                                    name: event.target.value,
+                                  })
+                                }
+                                className={`w-full rounded-md border px-2 py-1 ${
+                                  isEditing
+                                    ? "border-slate-300 bg-white"
+                                    : "border-transparent bg-transparent"
+                                }`}
+                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setEditingItemRowIndex(isEditing ? null : index)
+                                }
+                                className="rounded-md p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                                aria-label={
+                                  isEditing ? "Done editing item" : "Edit item"
+                                }
+                                title={isEditing ? "Done" : "Edit name/price"}
+                              >
+                                {isEditing ? <CheckIcon /> : <EditIcon />}
+                              </button>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 text-slate-600">
+                            {item.quantity}
+                          </td>
+                          <td className="mono px-3 py-2 text-right text-slate-700">
+                            <input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              value={(item.totalPriceCents / 100).toFixed(2)}
+                              readOnly={!isEditing}
+                              onChange={(event) =>
+                                updateReceiptItem(index, {
+                                  totalPriceCents: toCents(event.target.value),
+                                })
+                              }
+                              className={`mono w-28 rounded-md border px-2 py-1 text-right ${
+                                isEditing
+                                  ? "border-slate-300 bg-white"
+                                  : "border-transparent bg-transparent"
+                              }`}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -992,12 +1325,272 @@ export default function HomePage() {
         </section>
 
         <button
-          onClick={() => setStep("assign")}
+          onClick={() => setStep("claims")}
           disabled={people.length === 0 || !receipt || isParsing}
           className="primary-btn inline-flex items-center gap-2 px-5 py-3"
         >
+          <ChatIcon />
+          {receipt ? "Continue to chat claims pre-fill" : "Waiting for parsed receipt"}
+        </button>
+      </div>
+    );
+  }
+
+  function renderClaimsStep() {
+    if (!receipt || units.length === 0) {
+      return (
+        <div className="space-y-4">
+          <p className="step-kicker flex items-center gap-2">
+            <span className="icon-badge">
+              <ChatIcon />
+            </span>
+            Step 2
+          </p>
+          <h2 className="text-3xl font-semibold">Pre-fill from chat claims.</h2>
+          <p className="text-sm text-slate-700">
+            Parse your receipt first so chat screenshots can map to real receipt items.
+          </p>
+          <button
+            onClick={() => setStep("setup")}
+            className="secondary-btn px-4 py-2"
+          >
+            Back to setup
+          </button>
+        </div>
+      );
+    }
+
+    if (people.length === 0) {
+      return (
+        <div className="space-y-4">
+          <p className="step-kicker flex items-center gap-2">
+            <span className="icon-badge">
+              <ChatIcon />
+            </span>
+            Step 2
+          </p>
+          <h2 className="text-3xl font-semibold">Pre-fill from chat claims.</h2>
+          <p className="text-sm text-slate-700">
+            Add at least one person before pre-filling from chat screenshots.
+          </p>
+          <button
+            onClick={() => setStep("setup")}
+            className="secondary-btn px-4 py-2"
+          >
+            Back to setup
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-7">
+        <div>
+          <p className="step-kicker flex items-center gap-2">
+            <span className="icon-badge">
+              <ChatIcon />
+            </span>
+            Step 2
+          </p>
+          <h2 className="mt-2 text-3xl font-semibold">
+            Pre-fill from group chat screenshots.
+          </h2>
+          <p className="mt-2 text-sm text-slate-700">
+            Optional: upload screenshots where people claimed items. We&apos;ll suggest
+            assignments you can apply before manual review.
+          </p>
+        </div>
+
+        <label className="block rounded-2xl border border-dashed border-slate-400/70 bg-white/90 p-6">
+          <span className="mb-2 block text-sm font-medium text-slate-700">
+            Group chat screenshots
+          </span>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={onChatScreenshotsChange}
+            className="sr-only"
+            id="chat-screenshots-input"
+          />
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <label
+              htmlFor="chat-screenshots-input"
+              className="file-picker-btn inline-flex cursor-pointer items-center gap-2 px-4 py-2 text-sm font-semibold"
+            >
+              <UploadIcon />
+              {chatScreenshots.length > 0 ? "Replace screenshots" : "Choose screenshots"}
+            </label>
+            <span className="text-sm text-slate-500">
+              {chatScreenshots.length > 0
+                ? `${chatScreenshots.length} selected`
+                : "No screenshots selected"}
+            </span>
+          </div>
+          <p className="mt-2 text-xs text-slate-500">
+            Include messages where people claimed specific items or shares.
+          </p>
+        </label>
+
+        {chatScreenshots.length > 0 && (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {chatScreenshots.map((screenshot, index) => (
+              <div
+                key={`${screenshot.name}-${index}`}
+                className="soft-card flex items-center gap-3 rounded-xl p-2"
+              >
+                <span className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                  {chatScreenshotPreviewUrls[index] ? (
+                    <Image
+                      src={chatScreenshotPreviewUrls[index]}
+                      alt={`Chat screenshot ${index + 1}`}
+                      width={56}
+                      height={56}
+                      unoptimized
+                      className="h-full w-full object-cover"
+                    />
+                  ) : null}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-900">
+                    {screenshot.name}
+                  </p>
+                  <p className="mono text-xs text-slate-500">
+                    {Math.round(screenshot.size / 1024)} KB
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeChatScreenshot(index)}
+                  className="secondary-btn p-2 text-slate-600"
+                  aria-label="Remove screenshot"
+                  title="Remove screenshot"
+                >
+                  <TrashIcon />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={parseChatClaims}
+            disabled={chatScreenshots.length === 0 || isParsingChatClaims}
+            className="secondary-btn inline-flex items-center gap-2 px-4 py-2"
+          >
+            {isParsingChatClaims ? (
+              <>
+                <span className="loading-spinner" aria-hidden="true" />
+                <span>Analyzing screenshots</span>
+              </>
+            ) : (
+              <>
+                <ChatIcon />
+                Analyze screenshots
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setStep("assign")}
+            className="secondary-btn px-4 py-2"
+          >
+            Skip for now
+          </button>
+        </div>
+
+        {chatClaimsPrefill && (
+          <div className="space-y-3">
+            <div className="soft-card rounded-2xl p-4">
+              <p className="text-sm text-slate-700">
+                Suggested unit assignments: {claimedUnitCount}
+              </p>
+              {chatClaimsPrefill.unmatchedNotes.length > 0 && (
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
+                  {chatClaimsPrefill.unmatchedNotes.map((note, index) => (
+                    <li key={`${note}-${index}`}>{note}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {chatClaimsPrefill.suggestions.length > 0 ? (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-300">
+                        <th className="px-3 py-2 text-left font-semibold text-slate-700">
+                          Unit
+                        </th>
+                        <th className="px-3 py-2 text-left font-semibold text-slate-700">
+                          Suggested people
+                        </th>
+                        <th className="px-3 py-2 text-left font-semibold text-slate-700">
+                          Confidence
+                        </th>
+                        <th className="px-3 py-2 text-left font-semibold text-slate-700">
+                          Reason
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {chatClaimsPrefill.suggestions.map((suggestion, index) => {
+                        const unit = units.find((candidate) => candidate.id === suggestion.unitId);
+                        return (
+                          <tr
+                            key={`${suggestion.unitId}-${index}`}
+                            className="border-b border-slate-200"
+                          >
+                            <td className="px-3 py-2 text-slate-800">
+                              {unit ? `${unit.label} ($${moneyFromCents(unit.amountCents)})` : suggestion.unitId}
+                            </td>
+                            <td className="px-3 py-2 text-slate-700">
+                              {suggestion.people.join(", ")}
+                            </td>
+                            <td className="px-3 py-2 text-slate-700 capitalize">
+                              {suggestion.confidence}
+                            </td>
+                            <td className="px-3 py-2 text-slate-600">{suggestion.reason}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={applyChatClaimPrefill}
+                    className="primary-btn px-4 py-2"
+                  >
+                    Apply suggestions
+                  </button>
+                  {lastAppliedClaimCount > 0 && (
+                    <p className="text-sm text-slate-700">
+                      Applied suggestions to {lastAppliedClaimCount} unit
+                      {lastAppliedClaimCount === 1 ? "" : "s"}.
+                    </p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-slate-700">
+                No confident matches were suggested. Continue to manual assignment.
+              </p>
+            )}
+          </div>
+        )}
+
+        <button
+          onClick={() => setStep("assign")}
+          className="primary-btn inline-flex items-center gap-2 px-5 py-3"
+        >
           <AssignIcon />
-          {receipt ? "Start assigning items" : "Waiting for parsed receipt"}
+          Continue to assignment
         </button>
       </div>
     );
@@ -1167,11 +1760,86 @@ export default function HomePage() {
               className="soft-card rounded-2xl p-6 lg:min-h-[32rem] lg:self-start"
             >
               <p className="text-sm text-slate-500">Current item</p>
-              <h3 className="mt-1 text-2xl font-semibold">
-                {currentUnit.label}
-              </h3>
+              {currentSourceItem ? (
+                <div className="mt-1 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={currentSourceItem.name}
+                      readOnly={editingItemRowIndex !== currentSourceRowIndex}
+                      onChange={(event) =>
+                        updateReceiptItem(currentSourceRowIndex, {
+                          name: event.target.value,
+                        })
+                      }
+                      className={`w-full rounded-md border px-2 py-1 text-2xl font-semibold ${
+                        editingItemRowIndex === currentSourceRowIndex
+                          ? "border-slate-300 bg-white"
+                          : "border-transparent bg-transparent"
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingItemRowIndex(
+                          editingItemRowIndex === currentSourceRowIndex
+                            ? null
+                            : currentSourceRowIndex,
+                        )
+                      }
+                      className="rounded-md p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                      aria-label={
+                        editingItemRowIndex === currentSourceRowIndex
+                          ? "Done editing item"
+                          : "Edit item"
+                      }
+                      title="Edit name/price"
+                    >
+                      {editingItemRowIndex === currentSourceRowIndex ? (
+                        <CheckIcon />
+                      ) : (
+                        <EditIcon />
+                      )}
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="text-sm text-slate-600">
+                      Row total ($)
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={(currentSourceItem.totalPriceCents / 100).toFixed(2)}
+                        readOnly={editingItemRowIndex !== currentSourceRowIndex}
+                        onChange={(event) =>
+                          updateReceiptItem(currentSourceRowIndex, {
+                            totalPriceCents: toCents(event.target.value),
+                          })
+                        }
+                        className={`mono ml-2 w-28 rounded-md border px-2 py-1 text-right ${
+                          editingItemRowIndex === currentSourceRowIndex
+                            ? "border-slate-300 bg-white"
+                            : "border-transparent bg-transparent"
+                        }`}
+                      />
+                    </label>
+                    <p className="text-sm text-slate-600">
+                      Qty: {currentSourceItem.quantity}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <h3 className="mt-1 text-2xl font-semibold">
+                    {currentUnit.label}
+                  </h3>
+                  <p className="mono mt-1 text-lg">
+                    ${moneyFromCents(currentUnit.amountCents)}
+                  </p>
+                </>
+              )}
               <p className="mono mt-1 text-lg">
-                ${moneyFromCents(currentUnit.amountCents)}
+                Unit amount: ${moneyFromCents(currentUnit.amountCents)}
               </p>
 
               <div className="mt-5 flex flex-wrap gap-2">
@@ -1229,20 +1897,37 @@ export default function HomePage() {
                     currentPerson,
                   );
                   return (
-                    <button
+                    <div
                       key={unit.id}
-                      onClick={() => toggleCurrentPersonForUnit(unit.id)}
-                      className={`flex items-center justify-between rounded-xl px-4 py-3 text-left text-sm transition ${
-                        selected
-                          ? "bg-teal-700 text-white"
-                          : "bg-slate-100 text-slate-800 hover:bg-slate-200"
-                      }`}
+                      className="flex items-center gap-2"
                     >
-                      <span>{unit.label}</span>
-                      <span className="mono">
-                        ${moneyFromCents(unit.amountCents)}
-                      </span>
-                    </button>
+                      <button
+                        onClick={() => toggleCurrentPersonForUnit(unit.id)}
+                        className={`flex flex-1 items-center justify-between rounded-xl px-4 py-3 text-left text-sm transition ${
+                          selected
+                            ? "bg-teal-700 text-white"
+                            : "bg-slate-100 text-slate-800 hover:bg-slate-200"
+                        }`}
+                      >
+                        <span>{unit.label}</span>
+                        <span className="mono">
+                          ${moneyFromCents(unit.amountCents)}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => jumpToItemRow(unit.sourceRowIndex, true)}
+                        className={`rounded-md p-2 transition ${
+                          editingItemRowIndex === unit.sourceRowIndex
+                            ? "bg-teal-100 text-teal-800"
+                            : "bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+                        }`}
+                        aria-label="Edit this item"
+                        title="Edit this item"
+                      >
+                        <EditIcon className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   );
                 })}
               </div>
@@ -1401,7 +2086,7 @@ export default function HomePage() {
           Receipt Splitter
         </p>
         <p className="mt-1 text-sm text-slate-700">
-          Progress: Step {stepIndex(step)} of 3
+          Progress: Step {stepIndex(step)} of 4
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           {STEP_ORDER.map((stepName) => {
@@ -1441,6 +2126,7 @@ export default function HomePage() {
           </p>
         )}
         {step === "setup" && renderSetupStep()}
+        {step === "claims" && renderClaimsStep()}
         {step === "assign" && renderAssignStep()}
         {step === "results" && renderResultsStep()}
       </section>
