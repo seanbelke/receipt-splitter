@@ -49,3 +49,17 @@ export type SplitBreakdown = {
   taxShares: NamedCents[];
   tipShares: NamedCents[];
 };
+
+export type ClaimConfidence = "high" | "medium" | "low";
+
+export type ClaimSuggestion = {
+  unitId: string;
+  people: string[];
+  confidence: ClaimConfidence;
+  reason: string;
+};
+
+export type ChatClaimsPrefill = {
+  suggestions: ClaimSuggestion[];
+  unmatchedNotes: string[];
+};
