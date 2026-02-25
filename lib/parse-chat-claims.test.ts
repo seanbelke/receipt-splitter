@@ -10,6 +10,7 @@ function buildRequest(params?: {
   people?: string[];
   units?: Array<{ id: string; label: string; amountCents: number }>;
   screenshots?: File[];
+  extraContext?: string;
 }): Request {
   const form = new FormData();
   form.set("people", JSON.stringify(params?.people ?? ["Alice", "Bob"]));
@@ -25,6 +26,9 @@ function buildRequest(params?: {
 
   for (const file of params?.screenshots ?? [makeImageFile()]) {
     form.append("screenshots", file);
+  }
+  if (params?.extraContext) {
+    form.set("extraContext", params.extraContext);
   }
 
   return new Request("http://localhost/api/parse-chat-claims", {
@@ -50,6 +54,28 @@ function makeClient(response: MockResponse | Error): ResponseClient {
 
   return { responses: { create } };
 }
+
+test("parseChatClaimsRequest includes optional user context in model prompt", async () => {
+  let capturedArgs: Parameters<OpenAI["responses"]["create"]>[0] | null = null;
+  const create = (async (...args: Parameters<OpenAI["responses"]["create"]>) => {
+    capturedArgs = args[0];
+    return {
+      output_text: JSON.stringify({ suggestions: [], unmatchedNotes: [] }),
+    };
+  }) as OpenAI["responses"]["create"];
+
+  const result = await parseChatClaimsRequest(
+    buildRequest({ extraContext: "I am Alice. Socks is Bob." }),
+    () => ({ responses: { create } }),
+  );
+
+  assert.equal(result.status, 200);
+  const input = JSON.stringify(capturedArgs?.input ?? "");
+  assert.match(
+    input,
+    /Additional user context \(treat as authoritative when mapping names\/aliases\): I am Alice\. Socks is Bob\./,
+  );
+});
 
 test("parseChatClaimsRequest returns 400 when screenshot is missing", async () => {
   const result = await parseChatClaimsRequest(

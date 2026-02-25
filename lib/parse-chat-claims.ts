@@ -83,6 +83,9 @@ export async function parseChatClaimsRequest(
 
     const people = parseJsonField<string[]>(formData.get("people"), "people");
     const units = parseJsonField<PrefillUnit[]>(formData.get("units"), "units");
+    const extraContextRaw = formData.get("extraContext");
+    const extraContext =
+      typeof extraContextRaw === "string" ? extraContextRaw.trim() : "";
     const screenshots = formData
       .getAll("screenshots")
       .filter((entry): entry is File => entry instanceof File);
@@ -172,9 +175,14 @@ export async function parseChatClaimsRequest(
                 "- brief, factual mapping summary.",
                 "- no private/sensitive commentary.",
                 "If uncertain, skip that unit and add a brief note in unmatchedNotes.",
+                extraContext
+                  ? `Additional user context (treat as authoritative when mapping names/aliases): ${extraContext}`
+                  : "",
                 `People: ${JSON.stringify(people)}`,
                 `Units: ${JSON.stringify(units)}`,
-              ].join("\n"),
+              ]
+                .filter((line) => line.length > 0)
+                .join("\n"),
             },
             ...imageContent,
           ],

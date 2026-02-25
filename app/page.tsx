@@ -393,6 +393,7 @@ export default function HomePage() {
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
   const [chatScreenshots, setChatScreenshots] = useState<File[]>([]);
+  const [chatClaimsContext, setChatClaimsContext] = useState("");
   const [chatScreenshotPreviewUrls, setChatScreenshotPreviewUrls] = useState<
     string[]
   >([]);
@@ -609,6 +610,7 @@ export default function HomePage() {
       setTipCents(0);
       setEditingItemRowIndex(null);
       setChatScreenshots([]);
+      setChatClaimsContext("");
       setChatClaimsPrefill(null);
       setAiPrefillByUnit({});
       setLastAppliedClaimCount(0);
@@ -629,6 +631,7 @@ export default function HomePage() {
     setTipCents(0);
     setEditingItemRowIndex(null);
     setChatScreenshots([]);
+    setChatClaimsContext("");
     setChatClaimsPrefill(null);
     setAiPrefillByUnit({});
     setLastAppliedClaimCount(0);
@@ -685,6 +688,7 @@ export default function HomePage() {
       setChatClaimsPrefill(null);
       setAiPrefillByUnit({});
       setLastAppliedClaimCount(0);
+      setChatClaimsContext("");
       setCurrentUnitIndex(0);
       setCurrentPersonIndex(0);
       setAssignMode("byItem");
@@ -752,6 +756,9 @@ export default function HomePage() {
           })),
         ),
       );
+      if (chatClaimsContext.trim().length > 0) {
+        formData.append("extraContext", chatClaimsContext.trim());
+      }
       chatScreenshots.forEach((screenshot) =>
         formData.append("screenshots", screenshot),
       );
@@ -1530,6 +1537,22 @@ export default function HomePage() {
           </div>
           <p className="mt-2 text-xs text-slate-500">
             Include messages where people claimed specific items or shares.
+          </p>
+        </label>
+
+        <label className="block space-y-2">
+          <span className="text-sm font-medium text-slate-700">
+            Extra context for the AI (optional)
+          </span>
+          <textarea
+            value={chatClaimsContext}
+            onChange={(event) => setChatClaimsContext(event.target.value)}
+            rows={4}
+            placeholder={`Examples:\n- I am [name]\n- '[nickname]' is [full name]\n- [name] got [item]`}
+            className="input-field min-h-28 resize-y"
+          />
+          <p className="text-xs text-slate-500">
+            Use this to clarify identities, nicknames, or extra item claims not obvious from screenshots.
           </p>
         </label>
 
