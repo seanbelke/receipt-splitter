@@ -17,12 +17,18 @@ import {
 import {
   AssignableUnit,
   ChatClaimsPrefill,
+  ClaimConfidence,
   ParsedReceipt,
   SplitBreakdown,
 } from "@/lib/types";
 
 type Step = "setup" | "claims" | "assign" | "results";
 type AssignMode = "byItem" | "byPerson";
+type AIPrefillDetail = {
+  people: string[];
+  confidence: ClaimConfidence;
+  reason: string;
+};
 
 function stepIndex(step: Step): number {
   return { setup: 1, claims: 2, assign: 3, results: 4 }[step];
@@ -392,6 +398,17 @@ export default function HomePage() {
   >([]);
   const [chatClaimsPrefill, setChatClaimsPrefill] =
     useState<ChatClaimsPrefill | null>(null);
+  const [keptConfidenceLevels, setKeptConfidenceLevels] = useState<
+    Record<ClaimConfidence, boolean>
+  >({
+    high: true,
+    medium: true,
+    low: true,
+  });
+  const [aiPrefillByUnit, setAiPrefillByUnit] = useState<
+    Record<string, AIPrefillDetail>
+  >({});
+  const [isAiReasoningOpen, setIsAiReasoningOpen] = useState(false);
   const [lastAppliedClaimCount, setLastAppliedClaimCount] = useState(0);
   const [reportHtmlPreview, setReportHtmlPreview] = useState<string | null>(
     null,
@@ -456,6 +473,27 @@ export default function HomePage() {
     return map;
   }, [units]);
   const claimedUnitCount = chatClaimsPrefill?.suggestions.length ?? 0;
+  const filteredChatSuggestions = useMemo(
+    () =>
+      chatClaimsPrefill?.suggestions.filter(
+        (suggestion) => keptConfidenceLevels[suggestion.confidence],
+      ) ?? [],
+    [chatClaimsPrefill, keptConfidenceLevels],
+  );
+  const currentUnitAIPrefill = currentUnit ? aiPrefillByUnit[currentUnit.id] : null;
+  const currentPersonAIPrefills = useMemo(
+    () =>
+      units
+        .map((unit) => ({
+          unit,
+          detail: aiPrefillByUnit[unit.id],
+        }))
+        .filter(
+          (entry) =>
+            !!entry.detail && !!currentPerson && entry.detail.people.includes(currentPerson),
+        ) as Array<{ unit: AssignableUnit; detail: AIPrefillDetail }>,
+    [units, aiPrefillByUnit, currentPerson],
+  );
 
   useEffect(() => {
     setCurrentUnitIndex((prev) =>
@@ -572,6 +610,7 @@ export default function HomePage() {
       setEditingItemRowIndex(null);
       setChatScreenshots([]);
       setChatClaimsPrefill(null);
+      setAiPrefillByUnit({});
       setLastAppliedClaimCount(0);
       setStep("setup");
     }
@@ -591,6 +630,7 @@ export default function HomePage() {
     setEditingItemRowIndex(null);
     setChatScreenshots([]);
     setChatClaimsPrefill(null);
+    setAiPrefillByUnit({});
     setLastAppliedClaimCount(0);
     setStep("setup");
     setIsImagePreviewOpen(false);
@@ -606,6 +646,11 @@ export default function HomePage() {
     );
     setChatScreenshots(files);
     setChatClaimsPrefill(null);
+    setKeptConfidenceLevels({
+      high: true,
+      medium: true,
+      low: true,
+    });
     setLastAppliedClaimCount(0);
     setError(null);
   }
@@ -613,6 +658,11 @@ export default function HomePage() {
   function removeChatScreenshot(index: number) {
     setChatScreenshots((prev) => prev.filter((_, fileIndex) => fileIndex !== index));
     setChatClaimsPrefill(null);
+    setKeptConfidenceLevels({
+      high: true,
+      medium: true,
+      low: true,
+    });
     setLastAppliedClaimCount(0);
   }
 
@@ -633,6 +683,7 @@ export default function HomePage() {
       setTipCents(0);
       setEditingItemRowIndex(null);
       setChatClaimsPrefill(null);
+      setAiPrefillByUnit({});
       setLastAppliedClaimCount(0);
       setCurrentUnitIndex(0);
       setCurrentPersonIndex(0);
@@ -715,6 +766,11 @@ export default function HomePage() {
       }
 
       setChatClaimsPrefill(payload.prefill as ChatClaimsPrefill);
+      setKeptConfidenceLevels({
+        high: true,
+        medium: true,
+        low: true,
+      });
     } catch (err) {
       setError(
         err instanceof Error
@@ -726,6 +782,20 @@ export default function HomePage() {
     }
   }
 
+  function toggleConfidenceLevel(level: ClaimConfidence) {
+    setKeptConfidenceLevels((prev) => {
+      const activeCount = Object.values(prev).filter(Boolean).length;
+      if (prev[level] && activeCount === 1) {
+        return prev;
+      }
+      return {
+        ...prev,
+        [level]: !prev[level],
+      };
+    });
+    setLastAppliedClaimCount(0);
+  }
+
   function applyChatClaimPrefill() {
     if (!chatClaimsPrefill) {
       return;
@@ -734,10 +804,11 @@ export default function HomePage() {
     const validUnitIds = new Set(units.map((unit) => unit.id));
     const validPeople = new Set(people);
     let appliedCount = 0;
+    const nextAiPrefillByUnit: Record<string, AIPrefillDetail> = {};
 
     setAssignments((prev) => {
       const next = { ...prev };
-      chatClaimsPrefill.suggestions.forEach((suggestion) => {
+      filteredChatSuggestions.forEach((suggestion) => {
         if (!validUnitIds.has(suggestion.unitId)) {
           return;
         }
@@ -748,11 +819,20 @@ export default function HomePage() {
           return;
         }
         next[suggestion.unitId] = filteredPeople;
+        nextAiPrefillByUnit[suggestion.unitId] = {
+          people: filteredPeople,
+          confidence: suggestion.confidence,
+          reason: suggestion.reason,
+        };
         appliedCount += 1;
       });
       return next;
     });
 
+    setAiPrefillByUnit((prev) => ({
+      ...prev,
+      ...nextAiPrefillByUnit,
+    }));
     setLastAppliedClaimCount(appliedCount);
     setError(null);
   }
@@ -776,6 +856,7 @@ export default function HomePage() {
     setPeople((prev) => [...prev, trimmed]);
     setChatClaimsPrefill(null);
     setLastAppliedClaimCount(0);
+    setIsAiReasoningOpen(false);
     setNewPerson("");
     setError(null);
     newPersonInputRef.current?.focus();
@@ -790,6 +871,16 @@ export default function HomePage() {
     setPeople((prev) => prev.filter((person) => person !== name));
     setChatClaimsPrefill(null);
     setLastAppliedClaimCount(0);
+    setAiPrefillByUnit((prev) => {
+      const next: Record<string, AIPrefillDetail> = {};
+      Object.entries(prev).forEach(([unitId, detail]) => {
+        const nextPeople = detail.people.filter((person) => person !== name);
+        if (nextPeople.length > 0) {
+          next[unitId] = { ...detail, people: nextPeople };
+        }
+      });
+      return next;
+    });
     setAssignments((prev) => {
       const next: Record<string, string[]> = {};
       Object.entries(prev).forEach(([unitId, names]) => {
@@ -924,6 +1015,16 @@ export default function HomePage() {
       setUnits(nextUnits);
       setChatClaimsPrefill(null);
       setLastAppliedClaimCount(0);
+      setAiPrefillByUnit((prevPrefill) => {
+        const validUnitIds = new Set(nextUnits.map((unit) => unit.id));
+        const nextPrefill: Record<string, AIPrefillDetail> = {};
+        Object.entries(prevPrefill).forEach(([unitId, detail]) => {
+          if (validUnitIds.has(unitId)) {
+            nextPrefill[unitId] = detail;
+          }
+        });
+        return nextPrefill;
+      });
       setAssignments((prevAssignments) => {
         const validUnitIds = new Set(nextUnits.map((unit) => unit.id));
         const nextAssignments: Record<string, string[]> = {};
@@ -1505,8 +1606,28 @@ export default function HomePage() {
           <div className="space-y-3">
             <div className="soft-card rounded-2xl p-4">
               <p className="text-sm text-slate-700">
-                Suggested unit assignments: {claimedUnitCount}
+                Suggested unit assignments: {claimedUnitCount} total,{" "}
+                {filteredChatSuggestions.length} selected to apply
               </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(["high", "medium", "low"] as const).map((level) => {
+                  const selected = keptConfidenceLevels[level];
+                  return (
+                    <button
+                      key={level}
+                      type="button"
+                      onClick={() => toggleConfidenceLevel(level)}
+                      className={`rounded-full px-3 py-1 text-xs font-medium uppercase transition ${
+                        selected
+                          ? "bg-teal-700 text-white"
+                          : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                      }`}
+                    >
+                      {selected ? "Keep" : "Drop"} {level}
+                    </button>
+                  );
+                })}
+              </div>
               {chatClaimsPrefill.unmatchedNotes.length > 0 && (
                 <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
                   {chatClaimsPrefill.unmatchedNotes.map((note, index) => (
@@ -1516,7 +1637,7 @@ export default function HomePage() {
               )}
             </div>
 
-            {chatClaimsPrefill.suggestions.length > 0 ? (
+            {filteredChatSuggestions.length > 0 ? (
               <>
                 <div className="overflow-x-auto">
                   <table className="min-w-full border-collapse text-sm">
@@ -1537,7 +1658,7 @@ export default function HomePage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {chatClaimsPrefill.suggestions.map((suggestion, index) => {
+                      {filteredChatSuggestions.map((suggestion, index) => {
                         const unit = units.find((candidate) => candidate.id === suggestion.unitId);
                         return (
                           <tr
@@ -1565,7 +1686,8 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={applyChatClaimPrefill}
-                    className="primary-btn px-4 py-2"
+                    disabled={filteredChatSuggestions.length === 0}
+                    className="primary-btn px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Apply suggestions
                   </button>
@@ -1579,7 +1701,7 @@ export default function HomePage() {
               </>
             ) : (
               <p className="text-sm text-slate-700">
-                No confident matches were suggested. Continue to manual assignment.
+                No suggestions match your selected confidence levels. Continue to manual assignment or re-enable a level.
               </p>
             )}
           </div>
@@ -1652,6 +1774,9 @@ export default function HomePage() {
       (assignments[unit.id] ?? []).includes(currentPerson),
     ).length;
     const isByItem = assignMode === "byItem";
+    const hasAiPrefillInCurrentContext = isByItem
+      ? !!currentUnitAIPrefill
+      : currentPersonAIPrefills.length > 0;
     const jumpNavEntries = isByItem
       ? units.map((unit, index) => ({
           key: unit.id,
@@ -1713,6 +1838,14 @@ export default function HomePage() {
               }`}
             >
               View each person
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsAiReasoningOpen(true)}
+              disabled={!hasAiPrefillInCurrentContext}
+              className="secondary-btn px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              View AI prefill details
             </button>
           </div>
         </div>
@@ -2130,6 +2263,74 @@ export default function HomePage() {
         {step === "assign" && renderAssignStep()}
         {step === "results" && renderResultsStep()}
       </section>
+
+      {isAiReasoningOpen && step === "assign" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-3 sm:p-6">
+          <div className="w-full max-w-3xl rounded-2xl bg-white p-4 shadow-2xl sm:p-5">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="text-sm font-medium text-slate-700">
+                AI prefill details
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsAiReasoningOpen(false)}
+                className="secondary-btn px-3 py-2 text-sm"
+              >
+                Close
+              </button>
+            </div>
+
+            {assignMode === "byItem" ? (
+              currentUnitAIPrefill && currentUnit ? (
+                <div className="space-y-2 text-sm">
+                  <p className="text-slate-800">
+                    Item: <span className="font-medium">{currentUnit.label}</span>
+                  </p>
+                  <p className="text-slate-700">
+                    Assigned by AI to: {currentUnitAIPrefill.people.join(", ")}
+                  </p>
+                  <p className="text-slate-700 capitalize">
+                    Confidence: {currentUnitAIPrefill.confidence}
+                  </p>
+                  <p className="text-slate-600">{currentUnitAIPrefill.reason}</p>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-700">
+                  No AI prefill details for the current item.
+                </p>
+              )
+            ) : currentPerson ? (
+              currentPersonAIPrefills.length > 0 ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-slate-800">
+                    AI prefill entries for <span className="font-medium">{currentPerson}</span>
+                  </p>
+                  <div className="max-h-[52vh] space-y-2 overflow-y-auto pr-1">
+                    {currentPersonAIPrefills.map(({ unit, detail }) => (
+                      <div
+                        key={unit.id}
+                        className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                      >
+                        <p className="font-medium text-slate-900">
+                          {unit.label} (${moneyFromCents(unit.amountCents)})
+                        </p>
+                        <p className="mt-1 text-slate-700 capitalize">
+                          Confidence: {detail.confidence}
+                        </p>
+                        <p className="mt-1 text-slate-600">{detail.reason}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-700">
+                  No AI prefill details for the current person.
+                </p>
+              )
+            ) : null}
+          </div>
+        </div>
+      )}
 
       {reportHtmlPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-3 sm:p-6">
