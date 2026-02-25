@@ -1799,6 +1799,9 @@ export default function HomePage() {
     const selectedItemCountForCurrentPerson = units.filter((unit) =>
       (assignments[unit.id] ?? []).includes(currentPerson),
     ).length;
+    const unassignedUnitCount = units.filter(
+      (unit) => (assignments[unit.id] ?? []).length === 0,
+    ).length;
     const isByItem = assignMode === "byItem";
     const hasAiPrefillInCurrentContext = isByItem
       ? !!currentUnitAIPrefill
@@ -2049,12 +2052,20 @@ export default function HomePage() {
                 Select every item this person is sharing. Selected items:{" "}
                 {selectedItemCountForCurrentPerson}
               </p>
+              <p className="mt-1 text-sm text-slate-700">
+                Unassigned units remaining: {unassignedUnitCount}
+              </p>
 
               <div className="mt-5 grid gap-2">
                 {units.map((unit) => {
-                  const selected = (assignments[unit.id] ?? []).includes(
-                    currentPerson,
-                  );
+                  const assignedPeopleForUnit = assignments[unit.id] ?? [];
+                  const selected = assignedPeopleForUnit.includes(currentPerson);
+                  const assignedCount = assignedPeopleForUnit.length;
+                  const claimedByOthers = !selected && assignedCount > 0;
+                  const statusLabel =
+                    assignedCount === 0
+                      ? "Unassigned"
+                      : `Assigned to ${assignedCount}: ${assignedPeopleForUnit.join(", ")}`;
                   return (
                     <div
                       key={unit.id}
@@ -2062,15 +2073,30 @@ export default function HomePage() {
                     >
                       <button
                         onClick={() => toggleCurrentPersonForUnit(unit.id)}
-                        className={`flex flex-1 items-center justify-between rounded-xl px-4 py-3 text-left text-sm transition ${
+                        className={`flex flex-1 flex-col items-start rounded-xl px-4 py-3 text-left text-sm transition ${
                           selected
                             ? "bg-teal-700 text-white"
+                            : claimedByOthers
+                              ? "border border-amber-300 bg-amber-100 text-amber-900 hover:bg-amber-200"
                             : "bg-slate-100 text-slate-800 hover:bg-slate-200"
                         }`}
                       >
-                        <span>{unit.label}</span>
-                        <span className="mono">
-                          ${moneyFromCents(unit.amountCents)}
+                        <span className="flex w-full items-center justify-between gap-3">
+                          <span>{unit.label}</span>
+                          <span className="mono">
+                            ${moneyFromCents(unit.amountCents)}
+                          </span>
+                        </span>
+                        <span
+                          className={`mt-1 text-xs ${
+                            selected
+                              ? "text-teal-50"
+                              : claimedByOthers
+                                ? "text-amber-800"
+                                : "text-slate-500"
+                          }`}
+                        >
+                          {statusLabel}
                         </span>
                       </button>
                       <button
