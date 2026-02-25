@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import {
+  CSSProperties,
   ChangeEvent,
   FormEvent,
   useEffect,
@@ -17,6 +18,7 @@ import {
 import {
   AssignableUnit,
   ChatClaimsPrefill,
+  ClaimAssignment,
   ClaimConfidence,
   ParsedReceipt,
   SplitBreakdown,
@@ -25,10 +27,57 @@ import {
 type Step = "setup" | "claims" | "assign" | "results";
 type AssignMode = "byItem" | "byPerson";
 type AIPrefillDetail = {
-  people: string[];
-  confidence: ClaimConfidence;
+  assignments: Array<{
+    person: string;
+    confidence: ClaimConfidence;
+    reason: string;
+  }>;
+  missingContext: string[];
   reason: string;
 };
+type FollowUpAnswer = {
+  id: string;
+  question: string;
+  answer: string;
+};
+
+function getAssignmentCoverageTone(
+  assignedCount: number,
+  totalPeople: number,
+): {
+  cardClass: string;
+  statusClass: string;
+  cardStyle?: CSSProperties;
+  statusStyle?: CSSProperties;
+} {
+  if (assignedCount <= 0 || totalPeople <= 0) {
+    return {
+      cardClass: "bg-slate-100 text-slate-800 hover:bg-slate-200",
+      statusClass: "text-slate-500",
+    };
+  }
+
+  const boundedCount = Math.max(1, Math.min(assignedCount, totalPeople));
+  const stepIndex = boundedCount - 1;
+  const normalized = totalPeople <= 1 ? 1 : boundedCount / totalPeople;
+  const hue = Math.max(18, 56 - stepIndex * 6.9 - normalized * 6.9);
+  const saturation = Math.min(92, 72 + stepIndex * 4.6);
+  const lightness = Math.max(62, 96 - stepIndex * 5.2 - normalized * 5.75);
+  const borderLightness = Math.max(44, lightness - 17);
+
+  return {
+    cardClass: "border",
+    statusClass: "",
+    cardStyle: {
+      backgroundColor: `hsl(${hue} ${saturation}% ${lightness}%)`,
+      borderColor: `hsl(${hue} 44% ${borderLightness}%)`,
+      color: `hsl(${Math.max(16, hue - 14)} 42% 30%)`,
+    },
+    statusStyle: {
+      color: `hsl(${Math.max(16, hue - 14)} 36% 34%)`,
+    },
+  };
+}
 
 function stepIndex(step: Step): number {
   return { setup: 1, claims: 2, assign: 3, results: 4 }[step];
@@ -399,6 +448,12 @@ export default function HomePage() {
   >([]);
   const [chatClaimsPrefill, setChatClaimsPrefill] =
     useState<ChatClaimsPrefill | null>(null);
+  const [chatFollowUpDraft, setChatFollowUpDraft] = useState<
+    Record<string, string>
+  >({});
+  const [chatFollowUpHistory, setChatFollowUpHistory] = useState<
+    FollowUpAnswer[]
+  >([]);
   const [keptConfidenceLevels, setKeptConfidenceLevels] = useState<
     Record<ClaimConfidence, boolean>
   >({
@@ -473,13 +528,42 @@ export default function HomePage() {
     });
     return map;
   }, [units]);
-  const claimedUnitCount = chatClaimsPrefill?.suggestions.length ?? 0;
-  const filteredChatSuggestions = useMemo(
+  const assignmentSuggestions = useMemo(
     () =>
-      chatClaimsPrefill?.suggestions.filter(
-        (suggestion) => keptConfidenceLevels[suggestion.confidence],
+      chatClaimsPrefill?.suggestions.flatMap((suggestion) =>
+        suggestion.assignments
+          .filter(
+            (assignment): assignment is ClaimAssignment & { person: string } =>
+              assignment.status === "suggested" && typeof assignment.person === "string",
+          )
+          .map((assignment) => ({
+            unitId: suggestion.unitId,
+            person: assignment.person,
+            confidence: assignment.confidence,
+            reason: assignment.reason,
+          })),
       ) ?? [],
-    [chatClaimsPrefill, keptConfidenceLevels],
+    [chatClaimsPrefill],
+  );
+  const filteredAssignmentSuggestions = useMemo(
+    () =>
+      assignmentSuggestions.filter((assignment) =>
+        keptConfidenceLevels[assignment.confidence],
+      ),
+    [assignmentSuggestions, keptConfidenceLevels],
+  );
+  const missingContextAssignments = useMemo(
+    () =>
+      chatClaimsPrefill?.suggestions.flatMap((suggestion) =>
+        suggestion.assignments
+          .filter((assignment) => assignment.status === "missing_context")
+          .map((assignment) => ({
+            unitId: suggestion.unitId,
+            person: assignment.person,
+            reason: assignment.reason,
+          })),
+      ) ?? [],
+    [chatClaimsPrefill],
   );
   const currentUnitAIPrefill = currentUnit ? aiPrefillByUnit[currentUnit.id] : null;
   const currentPersonAIPrefills = useMemo(
@@ -491,7 +575,11 @@ export default function HomePage() {
         }))
         .filter(
           (entry) =>
-            !!entry.detail && !!currentPerson && entry.detail.people.includes(currentPerson),
+            !!entry.detail &&
+            !!currentPerson &&
+            entry.detail.assignments.some(
+              (assignment) => assignment.person === currentPerson,
+            ),
         ) as Array<{ unit: AssignableUnit; detail: AIPrefillDetail }>,
     [units, aiPrefillByUnit, currentPerson],
   );
@@ -541,6 +629,21 @@ export default function HomePage() {
       nextUrls.forEach((url) => URL.revokeObjectURL(url));
     };
   }, [chatScreenshots]);
+
+  useEffect(() => {
+    if (!chatClaimsPrefill) {
+      setChatFollowUpDraft({});
+      return;
+    }
+
+    setChatFollowUpDraft((prev) => {
+      const next: Record<string, string> = {};
+      chatClaimsPrefill.followUpQuestions.forEach((question) => {
+        next[question.id] = prev[question.id] ?? "";
+      });
+      return next;
+    });
+  }, [chatClaimsPrefill]);
 
   useEffect(() => {
     if (!isImagePreviewOpen) {
@@ -593,6 +696,18 @@ export default function HomePage() {
     };
   }, [step, assignMode, currentPersonIndex, currentUnitIndex]);
 
+  function resetChatPrefillState() {
+    setChatClaimsPrefill(null);
+    setChatFollowUpDraft({});
+    setChatFollowUpHistory([]);
+    setKeptConfidenceLevels({
+      high: true,
+      medium: true,
+      low: true,
+    });
+    setLastAppliedClaimCount(0);
+  }
+
   function onFileChange(event: ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files?.[0] ?? null;
     const changedFile =
@@ -611,9 +726,8 @@ export default function HomePage() {
       setEditingItemRowIndex(null);
       setChatScreenshots([]);
       setChatClaimsContext("");
-      setChatClaimsPrefill(null);
+      resetChatPrefillState();
       setAiPrefillByUnit({});
-      setLastAppliedClaimCount(0);
       setStep("setup");
     }
     if (!selected) {
@@ -632,9 +746,8 @@ export default function HomePage() {
     setEditingItemRowIndex(null);
     setChatScreenshots([]);
     setChatClaimsContext("");
-    setChatClaimsPrefill(null);
+    resetChatPrefillState();
     setAiPrefillByUnit({});
-    setLastAppliedClaimCount(0);
     setStep("setup");
     setIsImagePreviewOpen(false);
     setError(null);
@@ -648,25 +761,13 @@ export default function HomePage() {
       selectedFile.type.startsWith("image/"),
     );
     setChatScreenshots(files);
-    setChatClaimsPrefill(null);
-    setKeptConfidenceLevels({
-      high: true,
-      medium: true,
-      low: true,
-    });
-    setLastAppliedClaimCount(0);
+    resetChatPrefillState();
     setError(null);
   }
 
   function removeChatScreenshot(index: number) {
     setChatScreenshots((prev) => prev.filter((_, fileIndex) => fileIndex !== index));
-    setChatClaimsPrefill(null);
-    setKeptConfidenceLevels({
-      high: true,
-      medium: true,
-      low: true,
-    });
-    setLastAppliedClaimCount(0);
+    resetChatPrefillState();
   }
 
   async function startReceiptParse() {
@@ -685,9 +786,8 @@ export default function HomePage() {
       setTaxCents(0);
       setTipCents(0);
       setEditingItemRowIndex(null);
-      setChatClaimsPrefill(null);
+      resetChatPrefillState();
       setAiPrefillByUnit({});
-      setLastAppliedClaimCount(0);
       setChatClaimsContext("");
       setCurrentUnitIndex(0);
       setCurrentPersonIndex(0);
@@ -725,7 +825,7 @@ export default function HomePage() {
     await startReceiptParse();
   }
 
-  async function parseChatClaims() {
+  async function parseChatClaims(params?: { newFollowUpAnswers?: FollowUpAnswer[] }) {
     if (!receipt || units.length === 0) {
       setError("Parse your receipt before using chat claim pre-fill.");
       return;
@@ -739,10 +839,23 @@ export default function HomePage() {
       return;
     }
 
+    const hasNewAnswers = (params?.newFollowUpAnswers?.length ?? 0) > 0;
+    const nextHistory = hasNewAnswers
+      ? [...chatFollowUpHistory, ...(params?.newFollowUpAnswers ?? [])]
+      : [];
+    const nextRound =
+      hasNewAnswers && chatClaimsPrefill
+        ? Math.min(chatClaimsPrefill.round + 1, chatClaimsPrefill.maxRounds)
+        : 1;
+
     try {
       setIsParsingChatClaims(true);
       setError(null);
       setLastAppliedClaimCount(0);
+      if (!hasNewAnswers) {
+        setChatFollowUpHistory([]);
+        setChatFollowUpDraft({});
+      }
 
       const formData = new FormData();
       formData.append("people", JSON.stringify(people));
@@ -759,6 +872,8 @@ export default function HomePage() {
       if (chatClaimsContext.trim().length > 0) {
         formData.append("extraContext", chatClaimsContext.trim());
       }
+      formData.append("round", String(nextRound));
+      formData.append("followUpAnswers", JSON.stringify(nextHistory));
       chatScreenshots.forEach((screenshot) =>
         formData.append("screenshots", screenshot),
       );
@@ -773,6 +888,9 @@ export default function HomePage() {
       }
 
       setChatClaimsPrefill(payload.prefill as ChatClaimsPrefill);
+      if (hasNewAnswers) {
+        setChatFollowUpHistory(nextHistory);
+      }
       setKeptConfidenceLevels({
         high: true,
         medium: true,
@@ -815,25 +933,58 @@ export default function HomePage() {
 
     setAssignments((prev) => {
       const next = { ...prev };
-      filteredChatSuggestions.forEach((suggestion) => {
-        if (!validUnitIds.has(suggestion.unitId)) {
+      const assignmentsByUnit = new Map<string, Set<string>>();
+      filteredAssignmentSuggestions.forEach((suggestion) => {
+        if (!validUnitIds.has(suggestion.unitId) || !validPeople.has(suggestion.person)) {
           return;
         }
-        const filteredPeople = Array.from(
-          new Set(suggestion.people.filter((person) => validPeople.has(person))),
-        );
+        if (!assignmentsByUnit.has(suggestion.unitId)) {
+          assignmentsByUnit.set(suggestion.unitId, new Set());
+        }
+        assignmentsByUnit.get(suggestion.unitId)?.add(suggestion.person);
+      });
+
+      assignmentsByUnit.forEach((peopleForUnit, unitId) => {
+        const filteredPeople = Array.from(peopleForUnit);
         if (filteredPeople.length === 0) {
           return;
         }
-        next[suggestion.unitId] = filteredPeople;
-        nextAiPrefillByUnit[suggestion.unitId] = {
-          people: filteredPeople,
-          confidence: suggestion.confidence,
-          reason: suggestion.reason,
-        };
-        appliedCount += 1;
+        next[unitId] = filteredPeople;
+        appliedCount += filteredPeople.length;
       });
       return next;
+    });
+
+    chatClaimsPrefill.suggestions.forEach((suggestion) => {
+      if (!validUnitIds.has(suggestion.unitId)) {
+        return;
+      }
+      const suggestedAssignments = suggestion.assignments
+        .filter(
+          (assignment): assignment is ClaimAssignment & { person: string } =>
+            assignment.status === "suggested" &&
+            typeof assignment.person === "string" &&
+            validPeople.has(assignment.person) &&
+            keptConfidenceLevels[assignment.confidence],
+        )
+        .map((assignment) => ({
+          person: assignment.person,
+          confidence: assignment.confidence,
+          reason: assignment.reason,
+        }));
+      const missingContext = suggestion.assignments
+        .filter((assignment) => assignment.status === "missing_context")
+        .map((assignment) =>
+          assignment.person ? `${assignment.person}: ${assignment.reason}` : assignment.reason,
+        );
+      if (suggestedAssignments.length === 0 && missingContext.length === 0) {
+        return;
+      }
+      nextAiPrefillByUnit[suggestion.unitId] = {
+        assignments: suggestedAssignments,
+        missingContext,
+        reason: suggestion.reason,
+      };
     });
 
     setAiPrefillByUnit((prev) => ({
@@ -842,6 +993,25 @@ export default function HomePage() {
     }));
     setLastAppliedClaimCount(appliedCount);
     setError(null);
+  }
+
+  async function submitFollowUpAnswers() {
+    if (!chatClaimsPrefill || chatClaimsPrefill.followUpQuestions.length === 0) {
+      return;
+    }
+
+    const newAnswers = chatClaimsPrefill.followUpQuestions.map((question) => ({
+      id: question.id,
+      question: question.question,
+      answer: (chatFollowUpDraft[question.id] ?? "").trim(),
+    }));
+    const missing = newAnswers.some((answer) => answer.answer.length === 0);
+    if (missing) {
+      setError("Answer each follow-up question before rerunning AI prefill.");
+      return;
+    }
+
+    await parseChatClaims({ newFollowUpAnswers: newAnswers });
   }
 
   function addPerson() {
@@ -861,8 +1031,7 @@ export default function HomePage() {
     }
 
     setPeople((prev) => [...prev, trimmed]);
-    setChatClaimsPrefill(null);
-    setLastAppliedClaimCount(0);
+    resetChatPrefillState();
     setIsAiReasoningOpen(false);
     setNewPerson("");
     setError(null);
@@ -876,14 +1045,15 @@ export default function HomePage() {
 
   function removePerson(name: string) {
     setPeople((prev) => prev.filter((person) => person !== name));
-    setChatClaimsPrefill(null);
-    setLastAppliedClaimCount(0);
+    resetChatPrefillState();
     setAiPrefillByUnit((prev) => {
       const next: Record<string, AIPrefillDetail> = {};
       Object.entries(prev).forEach(([unitId, detail]) => {
-        const nextPeople = detail.people.filter((person) => person !== name);
-        if (nextPeople.length > 0) {
-          next[unitId] = { ...detail, people: nextPeople };
+        const nextAssignments = detail.assignments.filter(
+          (assignment) => assignment.person !== name,
+        );
+        if (nextAssignments.length > 0 || detail.missingContext.length > 0) {
+          next[unitId] = { ...detail, assignments: nextAssignments };
         }
       });
       return next;
@@ -1020,8 +1190,7 @@ export default function HomePage() {
       const nextReceipt = { ...prev, items: nextItems };
       const nextUnits = expandItemsToUnits(nextReceipt);
       setUnits(nextUnits);
-      setChatClaimsPrefill(null);
-      setLastAppliedClaimCount(0);
+      resetChatPrefillState();
       setAiPrefillByUnit((prevPrefill) => {
         const validUnitIds = new Set(nextUnits.map((unit) => unit.id));
         const nextPrefill: Record<string, AIPrefillDetail> = {};
@@ -1600,7 +1769,9 @@ export default function HomePage() {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={parseChatClaims}
+            onClick={() => {
+              void parseChatClaims();
+            }}
             disabled={chatScreenshots.length === 0 || isParsingChatClaims}
             aria-busy={isParsingChatClaims}
             className={`inline-flex items-center gap-2 px-4 py-2 ${
@@ -1632,8 +1803,11 @@ export default function HomePage() {
           <div className="space-y-3">
             <div className="soft-card rounded-2xl p-4">
               <p className="text-sm text-slate-700">
-                Suggested unit assignments: {claimedUnitCount} total,{" "}
-                {filteredChatSuggestions.length} selected to apply
+                Suggested assignments: {assignmentSuggestions.length} total,{" "}
+                {filteredAssignmentSuggestions.length} selected to apply.
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Clarification round {chatClaimsPrefill.round} of {chatClaimsPrefill.maxRounds}.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {(["high", "medium", "low"] as const).map((level) => {
@@ -1661,9 +1835,65 @@ export default function HomePage() {
                   ))}
                 </ul>
               )}
+              {missingContextAssignments.length > 0 && (
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-800">
+                  {missingContextAssignments.map((entry, index) => {
+                    const unit = units.find((candidate) => candidate.id === entry.unitId);
+                    const unitLabel = unit
+                      ? `${unit.label} ($${moneyFromCents(unit.amountCents)})`
+                      : entry.unitId;
+                    const subject = entry.person ? `${entry.person} @ ${unitLabel}` : unitLabel;
+                    return <li key={`${subject}-${index}`}>{subject}: {entry.reason}</li>;
+                  })}
+                </ul>
+              )}
             </div>
 
-            {filteredChatSuggestions.length > 0 ? (
+            {chatClaimsPrefill.followUpQuestions.length > 0 && (
+              <div className="soft-card rounded-2xl p-4">
+                <p className="text-sm font-medium text-slate-800">
+                  Answer these follow-up questions to improve assignment quality.
+                </p>
+                <div className="mt-3 space-y-3">
+                  {chatClaimsPrefill.followUpQuestions.map((entry) => (
+                    <label key={entry.id} className="block space-y-1">
+                      <span className="text-sm font-medium text-slate-800">
+                        {entry.question}
+                      </span>
+                      <span className="block text-xs text-slate-500">{entry.why}</span>
+                      <textarea
+                        rows={2}
+                        value={chatFollowUpDraft[entry.id] ?? ""}
+                        onChange={(event) =>
+                          setChatFollowUpDraft((prev) => ({
+                            ...prev,
+                            [entry.id]: event.target.value,
+                          }))
+                        }
+                        className="input-field min-h-20 resize-y"
+                        placeholder="Type your answer"
+                      />
+                    </label>
+                  ))}
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={submitFollowUpAnswers}
+                    disabled={isParsingChatClaims}
+                    className="secondary-btn px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Submit answers and rerun AI
+                  </button>
+                  <p className="text-xs text-slate-500">
+                    {chatClaimsPrefill.maxRounds - chatClaimsPrefill.round} follow-up round
+                    {chatClaimsPrefill.maxRounds - chatClaimsPrefill.round === 1 ? "" : "s"} remaining.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {filteredAssignmentSuggestions.length > 0 ? (
               <>
                 <div className="overflow-x-auto">
                   <table className="min-w-full border-collapse text-sm">
@@ -1673,7 +1903,7 @@ export default function HomePage() {
                           Unit
                         </th>
                         <th className="px-3 py-2 text-left font-semibold text-slate-700">
-                          Suggested people
+                          Suggested assignment
                         </th>
                         <th className="px-3 py-2 text-left font-semibold text-slate-700">
                           Confidence
@@ -1684,19 +1914,19 @@ export default function HomePage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredChatSuggestions.map((suggestion, index) => {
+                      {filteredAssignmentSuggestions.map((suggestion, index) => {
                         const unit = units.find((candidate) => candidate.id === suggestion.unitId);
                         return (
                           <tr
-                            key={`${suggestion.unitId}-${index}`}
+                            key={`${suggestion.unitId}-${suggestion.person}-${index}`}
                             className="border-b border-slate-200"
                           >
                             <td className="px-3 py-2 text-slate-800">
-                              {unit ? `${unit.label} ($${moneyFromCents(unit.amountCents)})` : suggestion.unitId}
+                              {unit
+                                ? `${unit.label} ($${moneyFromCents(unit.amountCents)})`
+                                : suggestion.unitId}
                             </td>
-                            <td className="px-3 py-2 text-slate-700">
-                              {suggestion.people.join(", ")}
-                            </td>
+                            <td className="px-3 py-2 text-slate-700">{suggestion.person}</td>
                             <td className="px-3 py-2 text-slate-700 capitalize">
                               {suggestion.confidence}
                             </td>
@@ -1712,14 +1942,14 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={applyChatClaimPrefill}
-                    disabled={filteredChatSuggestions.length === 0}
+                    disabled={filteredAssignmentSuggestions.length === 0}
                     className="primary-btn px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Apply suggestions
                   </button>
                   {lastAppliedClaimCount > 0 && (
                     <p className="text-sm text-slate-700">
-                      Applied suggestions to {lastAppliedClaimCount} unit
+                      Applied {lastAppliedClaimCount} assignment
                       {lastAppliedClaimCount === 1 ? "" : "s"}.
                     </p>
                   )}
@@ -1727,9 +1957,10 @@ export default function HomePage() {
               </>
             ) : (
               <p className="text-sm text-slate-700">
-                No suggestions match your selected confidence levels. Continue to manual assignment or re-enable a level.
+                No assignment suggestions match your selected confidence levels.
               </p>
             )}
+            <p className="text-xs text-slate-500">{chatClaimsPrefill.stopReason}</p>
           </div>
         )}
 
@@ -2062,6 +2293,10 @@ export default function HomePage() {
                   const selected = assignedPeopleForUnit.includes(currentPerson);
                   const assignedCount = assignedPeopleForUnit.length;
                   const claimedByOthers = !selected && assignedCount > 0;
+                  const coverageTone = getAssignmentCoverageTone(
+                    assignedCount,
+                    people.length,
+                  );
                   const statusLabel =
                     assignedCount === 0
                       ? "Unassigned"
@@ -2073,12 +2308,13 @@ export default function HomePage() {
                     >
                       <button
                         onClick={() => toggleCurrentPersonForUnit(unit.id)}
+                        style={selected ? undefined : claimedByOthers ? coverageTone.cardStyle : undefined}
                         className={`flex flex-1 flex-col items-start rounded-xl px-4 py-3 text-left text-sm transition ${
                           selected
                             ? "bg-teal-700 text-white"
                             : claimedByOthers
-                              ? "border border-amber-300 bg-amber-100 text-amber-900 hover:bg-amber-200"
-                            : "bg-slate-100 text-slate-800 hover:bg-slate-200"
+                              ? coverageTone.cardClass
+                              : "bg-slate-100 text-slate-800 hover:bg-slate-200"
                         }`}
                       >
                         <span className="flex w-full items-center justify-between gap-3">
@@ -2088,11 +2324,18 @@ export default function HomePage() {
                           </span>
                         </span>
                         <span
+                          style={
+                            selected
+                              ? undefined
+                              : claimedByOthers
+                                ? coverageTone.statusStyle
+                                : undefined
+                          }
                           className={`mt-1 text-xs ${
                             selected
                               ? "text-teal-50"
                               : claimedByOthers
-                                ? "text-amber-800"
+                                ? coverageTone.statusClass
                                 : "text-slate-500"
                           }`}
                         >
@@ -2338,13 +2581,34 @@ export default function HomePage() {
                   <p className="text-slate-800">
                     Item: <span className="font-medium">{currentUnit.label}</span>
                   </p>
-                  <p className="text-slate-700">
-                    Assigned by AI to: {currentUnitAIPrefill.people.join(", ")}
-                  </p>
-                  <p className="text-slate-700 capitalize">
-                    Confidence: {currentUnitAIPrefill.confidence}
-                  </p>
                   <p className="text-slate-600">{currentUnitAIPrefill.reason}</p>
+                  {currentUnitAIPrefill.assignments.length > 0 ? (
+                    <ul className="space-y-1">
+                      {currentUnitAIPrefill.assignments.map((assignment) => (
+                        <li
+                          key={`${assignment.person}-${assignment.reason}`}
+                          className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
+                        >
+                          <p className="font-medium text-slate-800">
+                            {assignment.person}{" "}
+                            <span className="capitalize text-slate-500">
+                              ({assignment.confidence})
+                            </span>
+                          </p>
+                          <p className="text-slate-600">{assignment.reason}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-slate-700">No AI assignment suggestions for this item.</p>
+                  )}
+                  {currentUnitAIPrefill.missingContext.length > 0 && (
+                    <ul className="list-disc space-y-1 pl-5 text-amber-800">
+                      {currentUnitAIPrefill.missingContext.map((entry, index) => (
+                        <li key={`${entry}-${index}`}>{entry}</li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               ) : (
                 <p className="text-sm text-slate-700">
@@ -2359,18 +2623,22 @@ export default function HomePage() {
                   </p>
                   <div className="max-h-[52vh] space-y-2 overflow-y-auto pr-1">
                     {currentPersonAIPrefills.map(({ unit, detail }) => (
-                      <div
-                        key={unit.id}
-                        className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-                      >
-                        <p className="font-medium text-slate-900">
-                          {unit.label} (${moneyFromCents(unit.amountCents)})
-                        </p>
-                        <p className="mt-1 text-slate-700 capitalize">
-                          Confidence: {detail.confidence}
-                        </p>
-                        <p className="mt-1 text-slate-600">{detail.reason}</p>
-                      </div>
+                      detail.assignments
+                        .filter((assignment) => assignment.person === currentPerson)
+                        .map((assignment) => (
+                          <div
+                            key={`${unit.id}-${assignment.reason}`}
+                            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                          >
+                            <p className="font-medium text-slate-900">
+                              {unit.label} (${moneyFromCents(unit.amountCents)})
+                            </p>
+                            <p className="mt-1 capitalize text-slate-700">
+                              Confidence: {assignment.confidence}
+                            </p>
+                            <p className="mt-1 text-slate-600">{assignment.reason}</p>
+                          </div>
+                        ))
                     ))}
                   </div>
                 </div>
