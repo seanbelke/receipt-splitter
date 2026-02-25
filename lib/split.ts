@@ -34,12 +34,11 @@ export function expandItemsToUnits(receipt: ParsedReceipt): AssignableUnit[] {
 }
 
 function splitCentsEvenly(totalCents: number, names: string[]): Map<string, number> {
-  const sortedNames = [...names].sort((a, b) => a.localeCompare(b));
-  const base = Math.floor(totalCents / sortedNames.length);
-  const remainder = totalCents - base * sortedNames.length;
+  const base = Math.floor(totalCents / names.length);
+  const remainder = totalCents - base * names.length;
   const result = new Map<string, number>();
 
-  sortedNames.forEach((name, i) => {
+  names.forEach((name, i) => {
     result.set(name, base + (i < remainder ? 1 : 0));
   });
 
@@ -47,7 +46,7 @@ function splitCentsEvenly(totalCents: number, names: string[]): Map<string, numb
 }
 
 function apportionByWeight(totalCents: number, weights: Map<string, number>): Map<string, number> {
-  const entries = [...weights.entries()].sort(([a], [b]) => a.localeCompare(b));
+  const entries = [...weights.entries()];
   const totalWeight = entries.reduce((sum, [, weight]) => sum + weight, 0);
 
   const result = new Map<string, number>();
@@ -62,11 +61,12 @@ function apportionByWeight(totalCents: number, weights: Map<string, number>): Ma
     return result;
   }
 
-  const shares = entries.map(([name, weight]) => {
+  const shares = entries.map(([name, weight], index) => {
     const exact = (totalCents * weight) / totalWeight;
     const floorShare = Math.floor(exact);
     return {
       name,
+      index,
       floorShare,
       remainderWeight: exact - floorShare
     };
@@ -78,7 +78,7 @@ function apportionByWeight(totalCents: number, weights: Map<string, number>): Ma
   shares
     .sort((a, b) => {
       if (b.remainderWeight === a.remainderWeight) {
-        return a.name.localeCompare(b.name);
+        return a.index - b.index;
       }
       return b.remainderWeight - a.remainderWeight;
     })
@@ -109,12 +109,11 @@ export function calculateSplitBreakdown(params: {
 }): SplitBreakdown {
   const { people, units, assignments, taxCents, tipCents } = params;
   const subtotals = new Map<string, number>(people.map((name) => [name, 0]));
-  const sortedPeople = people.slice().sort((a, b) => a.localeCompare(b));
   const unitAllocations: SplitBreakdown["unitAllocations"] = [];
 
   units.forEach((unit) => {
     const assignedPeople = assignments[unit.id] ?? [];
-    const validPeople = assignedPeople.filter((name, i) => people.includes(name) && assignedPeople.indexOf(name) === i);
+    const validPeople = people.filter((name) => assignedPeople.includes(name));
     if (validPeople.length === 0) {
       unitAllocations.push({
         unitId: unit.id,
@@ -127,9 +126,10 @@ export function calculateSplitBreakdown(params: {
     }
 
     const split = splitCentsEvenly(unit.amountCents, validPeople);
-    const perPersonShares = [...split.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([name, amountCents]) => ({ name, amountCents }));
+    const perPersonShares = [...split.entries()].map(([name, amountCents]) => ({
+      name,
+      amountCents
+    }));
 
     split.forEach((value, name) => {
       subtotals.set(name, (subtotals.get(name) ?? 0) + value);
@@ -147,7 +147,7 @@ export function calculateSplitBreakdown(params: {
   const taxShares = apportionByWeight(taxCents, subtotals);
   const tipShares = apportionByWeight(tipCents, subtotals);
 
-  const personTotals = sortedPeople.map((name) => {
+  const personTotals = people.map((name) => {
     const subtotalCents = subtotals.get(name) ?? 0;
     const taxShareCents = taxShares.get(name) ?? 0;
     const tipShareCents = tipShares.get(name) ?? 0;
@@ -163,15 +163,15 @@ export function calculateSplitBreakdown(params: {
   return {
     personTotals,
     unitAllocations,
-    subtotalShares: sortedPeople.map((name) => ({
+    subtotalShares: people.map((name) => ({
       name,
       amountCents: subtotals.get(name) ?? 0
     })),
-    taxShares: sortedPeople.map((name) => ({
+    taxShares: people.map((name) => ({
       name,
       amountCents: taxShares.get(name) ?? 0
     })),
-    tipShares: sortedPeople.map((name) => ({
+    tipShares: people.map((name) => ({
       name,
       amountCents: tipShares.get(name) ?? 0
     }))
