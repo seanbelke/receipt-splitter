@@ -146,6 +146,14 @@ input {
     opacity: 0.78;
   }
 
+  .analyze-chat-btn[aria-busy="true"]:disabled {
+    opacity: 1;
+    background: linear-gradient(140deg, var(--accent), #0f766e);
+    color: #ffffff;
+    box-shadow: 0 10px 22px -18px rgba(13, 148, 136, 0.9);
+    border: none;
+  }
+
   .loading-spinner {
     height: 1.05rem;
     width: 1.05rem;

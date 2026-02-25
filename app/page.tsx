@@ -1579,7 +1579,10 @@ export default function HomePage() {
             type="button"
             onClick={parseChatClaims}
             disabled={chatScreenshots.length === 0 || isParsingChatClaims}
-            className="secondary-btn inline-flex items-center gap-2 px-4 py-2"
+            aria-busy={isParsingChatClaims}
+            className={`inline-flex items-center gap-2 px-4 py-2 ${
+              isParsingChatClaims ? "primary-btn analyze-chat-btn" : "secondary-btn"
+            }`}
           >
             {isParsingChatClaims ? (
               <>
