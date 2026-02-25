@@ -52,14 +52,33 @@ export type SplitBreakdown = {
 
 export type ClaimConfidence = "high" | "medium" | "low";
 
+export type ClaimAssignmentStatus = "suggested" | "missing_context";
+
+export type ClaimAssignment = {
+  person: string | null;
+  confidence: ClaimConfidence;
+  status: ClaimAssignmentStatus;
+  reason: string;
+};
+
 export type ClaimSuggestion = {
   unitId: string;
-  people: string[];
-  confidence: ClaimConfidence;
+  assignments: ClaimAssignment[];
   reason: string;
+};
+
+export type ChatClaimFollowUpQuestion = {
+  id: string;
+  question: string;
+  why: string;
 };
 
 export type ChatClaimsPrefill = {
   suggestions: ClaimSuggestion[];
   unmatchedNotes: string[];
+  followUpQuestions: ChatClaimFollowUpQuestion[];
+  isComplete: boolean;
+  stopReason: string;
+  round: number;
+  maxRounds: number;
 };

@@ -11,6 +11,8 @@ function buildRequest(params?: {
   units?: Array<{ id: string; label: string; amountCents: number }>;
   screenshots?: File[];
   extraContext?: string;
+  round?: number;
+  followUpAnswers?: Array<{ id: string; question: string; answer: string }>;
 }): Request {
   const form = new FormData();
   form.set("people", JSON.stringify(params?.people ?? ["Alice", "Bob"]));
@@ -29,6 +31,12 @@ function buildRequest(params?: {
   }
   if (params?.extraContext) {
     form.set("extraContext", params.extraContext);
+  }
+  if (params?.round) {
+    form.set("round", String(params.round));
+  }
+  if (params?.followUpAnswers) {
+    form.set("followUpAnswers", JSON.stringify(params.followUpAnswers));
   }
 
   return new Request("http://localhost/api/parse-chat-claims", {
@@ -60,7 +68,11 @@ test("parseChatClaimsRequest includes optional user context in model prompt", as
   const create = (async (...args: Parameters<OpenAI["responses"]["create"]>) => {
     capturedArgs = args[0];
     return {
-      output_text: JSON.stringify({ suggestions: [], unmatchedNotes: [] }),
+      output_text: JSON.stringify({
+        suggestions: [],
+        unmatchedNotes: [],
+        followUpQuestions: [],
+      }),
     };
   }) as OpenAI["responses"]["create"];
 
@@ -80,7 +92,14 @@ test("parseChatClaimsRequest includes optional user context in model prompt", as
 test("parseChatClaimsRequest returns 400 when screenshot is missing", async () => {
   const result = await parseChatClaimsRequest(
     buildRequest({ screenshots: [] }),
-    () => makeClient({ output_text: "{}" }),
+    () =>
+      makeClient({
+        output_text: JSON.stringify({
+          suggestions: [],
+          unmatchedNotes: [],
+          followUpQuestions: [],
+        }),
+      }),
   );
 
   assert.equal(result.status, 400);
@@ -92,7 +111,14 @@ test("parseChatClaimsRequest returns 400 when screenshot is not an image", async
 
   const result = await parseChatClaimsRequest(
     buildRequest({ screenshots: [file] }),
-    () => makeClient({ output_text: "{}" }),
+    () =>
+      makeClient({
+        output_text: JSON.stringify({
+          suggestions: [],
+          unmatchedNotes: [],
+          followUpQuestions: [],
+        }),
+      }),
   );
 
   assert.equal(result.status, 400);
@@ -115,18 +141,49 @@ test("parseChatClaimsRequest normalizes and filters invalid suggestions", async 
         suggestions: [
           {
             unitId: "0:0",
-            people: ["Alice", "Alice", "Unknown"],
-            confidence: "high",
+            assignments: [
+              {
+                person: "Alice",
+                confidence: "high",
+                status: "suggested",
+                reason: " Alice claimed tacos ",
+              },
+              {
+                person: "Alice",
+                confidence: "high",
+                status: "suggested",
+                reason: " Alice claimed tacos ",
+              },
+              {
+                person: "Unknown",
+                confidence: "low",
+                status: "suggested",
+                reason: "Unknown person",
+              },
+            ],
             reason: " Alice claimed tacos ",
           },
           {
             unitId: "9:9",
-            people: ["Bob"],
-            confidence: "low",
+            assignments: [
+              {
+                person: "Bob",
+                confidence: "low",
+                status: "suggested",
+                reason: "invalid unit",
+              },
+            ],
             reason: "invalid unit",
           },
         ],
         unmatchedNotes: ["  Could not map wings message "],
+        followUpQuestions: [
+          {
+            id: " who-is-yall ",
+            question: "Who is included when someone says yall? ",
+            why: " Needed to map shared items ",
+          },
+        ],
       }),
     }),
   );
@@ -136,13 +193,67 @@ test("parseChatClaimsRequest normalizes and filters invalid suggestions", async 
     suggestions: [
       {
         unitId: "0:0",
-        people: ["Alice"],
-        confidence: "high",
+        assignments: [
+          {
+            person: "Alice",
+            confidence: "high",
+            status: "suggested",
+            reason: "Alice claimed tacos",
+          },
+        ],
         reason: "Alice claimed tacos",
       },
     ],
     unmatchedNotes: ["Could not map wings message"],
+    followUpQuestions: [
+      {
+        id: "who-is-yall",
+        question: "Who is included when someone says yall?",
+        why: "Needed to map shared items",
+      },
+    ],
+    isComplete: false,
+    stopReason: "Waiting for follow-up answers.",
+    round: 1,
+    maxRounds: 2,
   });
+});
+
+test("parseChatClaimsRequest suppresses follow-up questions at max round", async () => {
+  const result = await parseChatClaimsRequest(
+    buildRequest({
+      round: 2,
+      followUpAnswers: [
+        {
+          id: "who-is-yall",
+          question: "Who is included when someone says yall?",
+          answer: "Alice and Bob",
+        },
+      ],
+    }),
+    () =>
+      makeClient({
+        output_text: JSON.stringify({
+          suggestions: [],
+          unmatchedNotes: [],
+          followUpQuestions: [
+            {
+              id: "extra",
+              question: "Another question",
+              why: "Should be suppressed",
+            },
+          ],
+        }),
+      }),
+  );
+
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body.prefill?.followUpQuestions, []);
+  assert.equal(result.body.prefill?.isComplete, true);
+  assert.equal(
+    result.body.prefill?.stopReason,
+    "Reached the follow-up question round limit.",
+  );
 });
 
 test("parseChatClaimsRequest returns 500 on unexpected errors", async () => {

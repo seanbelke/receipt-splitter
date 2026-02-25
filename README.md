@@ -8,8 +8,9 @@ Basic full-stack app for splitting restaurant receipts when one person pays.
 2. Parse line items with OpenAI API.
 3. Add the names of everyone involved.
 4. Optionally upload group chat screenshots to pre-fill item assignment suggestions.
-5. Review/apply suggestions, then assign remaining item units manually.
-6. Auto-calculate what each person owes, including proportional tax and tip.
+5. If needed, answer up to two rounds of AI follow-up questions to disambiguate identities/claims.
+6. Review/apply assignment-level suggestions, then assign remaining item units manually.
+7. Auto-calculate what each person owes, including proportional tax and tip.
 
 ## Tech
 
