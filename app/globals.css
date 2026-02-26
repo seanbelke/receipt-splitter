@@ -3,19 +3,18 @@
 @tailwind utilities;
 
 :root {
-  --bg: #f2f6f7;
-  --ink: #1c1d21;
-  --muted: #58606b;
-  --line: #b8c8d1;
-  --primary: #008148;
-  --primary-strong: #00663a;
-  --primary-soft: #d7ece1;
-  --secondary: #2d728f;
-  --secondary-soft: #d8e8ef;
-  --warm-soft: #ffecdf;
-  --warm-ink: #7f4e35;
-  --shadow-soft: 0 14px 40px -28px rgba(28, 29, 33, 0.4);
-  --danger: #632b30;
+  --bg: #f7f8fb;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --line: #cfd8e3;
+  --accent: #0f766e;
+  --accent-strong: #115e59;
+  --accent-soft: #d9f5f1;
+  --accent-wash: #f0fcf9;
+  --warm-soft: #fff3dc;
+  --warm-ink: #9a5400;
+  --shadow-soft: 0 14px 40px -28px rgba(15, 23, 42, 0.45);
+  --danger: #b91c1c;
 }
 
 * {
@@ -26,8 +25,8 @@ body {
   margin: 0;
   background:
     radial-gradient(circle at 5% 5%, #ffffff, transparent 35%),
-    radial-gradient(circle at 95% 10%, #d5e8f0, transparent 32%),
-    radial-gradient(circle at 100% 100%, #dbeee4, transparent 35%),
+    radial-gradient(circle at 95% 10%, #dcf5ff, transparent 32%),
+    radial-gradient(circle at 100% 100%, #e9f8f4, transparent 35%),
     var(--bg);
   color: var(--ink);
   font-family: var(--font-heading), sans-serif;
@@ -44,16 +43,16 @@ input {
 
 @layer components {
   .surface-panel {
-    border: 1px solid color-mix(in srgb, var(--secondary) 28%, white);
+    border: 1px solid rgba(148, 163, 184, 0.35);
     background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.88));
     box-shadow: var(--shadow-soft);
     backdrop-filter: blur(8px);
   }
 
   .soft-card {
-    border: 1px solid color-mix(in srgb, var(--secondary) 30%, white);
-    background: linear-gradient(165deg, #ffffff, #f4f8fa);
-    box-shadow: 0 8px 22px -20px rgba(28, 29, 33, 0.45);
+    border: 1px solid rgba(148, 163, 184, 0.38);
+    background: linear-gradient(165deg, #ffffff, #f8fbff);
+    box-shadow: 0 8px 22px -20px rgba(15, 23, 42, 0.45);
   }
 
   .icon-badge {
@@ -63,12 +62,12 @@ input {
     align-items: center;
     justify-content: center;
     border-radius: 0.7rem;
-    background: var(--secondary-soft);
-    color: var(--secondary);
+    background: var(--accent-wash);
+    color: var(--accent-strong);
   }
 
   .step-kicker {
-    color: var(--secondary);
+    color: var(--accent-strong);
     letter-spacing: 0.2em;
     text-transform: uppercase;
     font-size: 0.72rem;
@@ -77,10 +76,10 @@ input {
 
   .primary-btn {
     border-radius: 0.8rem;
-    background: linear-gradient(140deg, var(--primary), var(--primary-strong));
+    background: linear-gradient(140deg, var(--accent), #0f766e);
     color: #ffffff;
     transition: transform 120ms ease, filter 120ms ease, box-shadow 120ms ease;
-    box-shadow: 0 10px 22px -18px rgba(0, 129, 72, 0.85);
+    box-shadow: 0 10px 22px -18px rgba(13, 148, 136, 0.9);
   }
 
   .primary-btn:hover {
@@ -93,50 +92,50 @@ input {
     transform: none;
     filter: none;
     box-shadow: none;
-    background: #8ea6b3;
+    background: #94a3b8;
   }
 
   .secondary-btn {
     border-radius: 0.7rem;
-    border: 1px solid color-mix(in srgb, var(--secondary) 38%, white);
+    border: 1px solid rgba(148, 163, 184, 0.6);
     background: rgba(255, 255, 255, 0.7);
-    color: var(--secondary);
+    color: #334155;
     transition: background-color 120ms ease;
   }
 
   .secondary-btn:hover {
-    background: color-mix(in srgb, var(--secondary-soft) 40%, white);
+    background: rgba(241, 245, 249, 0.8);
   }
 
   .input-field {
     width: 100%;
     border-radius: 0.65rem;
-    border: 1px solid color-mix(in srgb, var(--secondary) 36%, white);
+    border: 1px solid rgba(148, 163, 184, 0.6);
     background: rgba(255, 255, 255, 0.95);
     padding: 0.55rem 0.75rem;
   }
 
   .input-field:focus {
-    outline: 2px solid color-mix(in srgb, var(--secondary) 24%, transparent);
+    outline: 2px solid rgba(15, 118, 110, 0.22);
     outline-offset: 1px;
-    border-color: color-mix(in srgb, var(--secondary) 66%, white);
+    border-color: rgba(15, 118, 110, 0.7);
   }
 
   .file-picker-btn {
     border-radius: 0.75rem;
-    border: 1px solid color-mix(in srgb, var(--secondary) 40%, white);
+    border: 1px solid rgba(15, 118, 110, 0.38);
     background:
-      linear-gradient(140deg, rgba(45, 114, 143, 0.16), rgba(255, 205, 178, 0.2)),
+      linear-gradient(140deg, rgba(15, 118, 110, 0.12), rgba(56, 189, 248, 0.12)),
       #ffffff;
-    color: var(--secondary);
-    box-shadow: 0 12px 24px -20px rgba(28, 29, 33, 0.55);
+    color: #0f766e;
+    box-shadow: 0 12px 24px -20px rgba(15, 23, 42, 0.55);
     transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
   }
 
   .file-picker-btn:hover {
     transform: translateY(-1px);
-    border-color: color-mix(in srgb, var(--secondary) 62%, white);
-    box-shadow: 0 16px 26px -20px rgba(28, 29, 33, 0.55);
+    border-color: rgba(15, 118, 110, 0.58);
+    box-shadow: 0 16px 26px -20px rgba(15, 23, 42, 0.55);
   }
 
   .file-picker-btn:active {
@@ -149,9 +148,9 @@ input {
 
   .analyze-chat-btn[aria-busy="true"]:disabled {
     opacity: 1;
-    background: linear-gradient(140deg, var(--primary), var(--primary-strong));
+    background: linear-gradient(140deg, var(--accent), #0f766e);
     color: #ffffff;
-    box-shadow: 0 10px 22px -18px rgba(0, 129, 72, 0.85);
+    box-shadow: 0 10px 22px -18px rgba(13, 148, 136, 0.9);
     border: none;
   }
 
@@ -184,86 +183,6 @@ input {
 
   .loading-dots span:nth-child(3) {
     animation-delay: 0.32s;
-  }
-
-  /* Palette role mapping for existing utility classes in page.tsx */
-  .bg-slate-50 {
-    background-color: #f4f8fa !important;
-  }
-  .bg-slate-100 {
-    background-color: #eaf1f5 !important;
-  }
-  .bg-slate-200,
-  .bg-slate-200\/70 {
-    background-color: #dbe6ec !important;
-  }
-  .bg-slate-300 {
-    background-color: #c8d8e0 !important;
-  }
-  .bg-white\/90,
-  .bg-white\/95 {
-    background-color: rgba(255, 255, 255, 0.94) !important;
-  }
-  .bg-teal-50 {
-    background-color: #d7ece1 !important;
-  }
-  .bg-teal-100 {
-    background-color: #bfe0cf !important;
-  }
-  .bg-teal-700 {
-    background-color: #008148 !important;
-  }
-  .bg-rose-50 {
-    background-color: #ffecdf !important;
-  }
-
-  .text-slate-900 {
-    color: #1c1d21 !important;
-  }
-  .text-slate-800 {
-    color: #2b3139 !important;
-  }
-  .text-slate-700 {
-    color: #3f454e !important;
-  }
-  .text-slate-600 {
-    color: #58606b !important;
-  }
-  .text-slate-500 {
-    color: #6c7480 !important;
-  }
-  .text-teal-900,
-  .text-teal-800 {
-    color: #00663a !important;
-  }
-  .text-teal-50 {
-    color: #eaf7f0 !important;
-  }
-  .text-rose-900 {
-    color: #632b30 !important;
-  }
-  .text-amber-800 {
-    color: #7f4e35 !important;
-  }
-  .text-red-800 {
-    color: #632b30 !important;
-  }
-
-  .border-slate-200,
-  .border-slate-200\/90 {
-    border-color: #d6e1e8 !important;
-  }
-  .border-slate-300 {
-    border-color: #c2d2db !important;
-  }
-  .border-slate-400\/70 {
-    border-color: rgba(125, 155, 170, 0.7) !important;
-  }
-  .border-red-200 {
-    border-color: #b87f84 !important;
-  }
-  .bg-red-50 {
-    background-color: #f3e7e8 !important;
   }
 }
 
