@@ -2,6 +2,7 @@ import Button from "@mui/material/Button";
 import ButtonBase from "@mui/material/ButtonBase";
 import { CSSProperties, RefObject } from "react";
 import { AssignableUnit, ParsedReceipt } from "@/lib/types";
+import { toCents } from "@/lib/currency";
 import { moneyFromCents } from "@/lib/split";
 import { AIPrefillDetail, AssignMode } from "./types";
 import { AssignIcon, CheckIcon, EditIcon, ResultIcon } from "./icons";
@@ -70,7 +71,6 @@ export type AssignStepProps = {
   editingItemRowIndex: number | null;
   setEditingItemRowIndex: (index: number | null) => void;
   updateReceiptItem: (rowIndex: number, updates: Partial<ParsedReceipt["items"][number]>) => void;
-  toCents: (value: string) => number;
   togglePersonForCurrentUnit: (name: string) => void;
   selectAllForCurrentUnit: () => void;
   clearForCurrentUnit: () => void;
@@ -110,7 +110,6 @@ export function AssignStep(props: AssignStepProps) {
     editingItemRowIndex,
     setEditingItemRowIndex,
     updateReceiptItem,
-    toCents,
     togglePersonForCurrentUnit,
     selectAllForCurrentUnit,
     clearForCurrentUnit,

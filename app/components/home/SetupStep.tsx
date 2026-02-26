@@ -4,6 +4,7 @@ import ButtonBase from "@mui/material/ButtonBase";
 import CircularProgress from "@mui/material/CircularProgress";
 import { ChangeEvent, FormEvent, RefObject } from "react";
 import { AssignableUnit, ParsedReceipt } from "@/lib/types";
+import { toCents } from "@/lib/currency";
 import { moneyFromCents } from "@/lib/split";
 import { ChatIcon, CheckIcon, EditIcon, TrashIcon, UploadIcon, UsersIcon } from "./icons";
 
@@ -27,7 +28,6 @@ export type SetupStepProps = {
   onAddPersonSubmit: (event: FormEvent) => void;
   setNewPerson: (value: string) => void;
   removePerson: (name: string) => void;
-  toCents: (value: string) => number;
   setTaxCents: (value: number) => void;
   setTipCents: (value: number) => void;
   updateReceiptItem: (rowIndex: number, updates: Partial<ParsedReceipt["items"][number]>) => void;
@@ -57,7 +57,6 @@ export function SetupStep(props: SetupStepProps) {
     onAddPersonSubmit,
     setNewPerson,
     removePerson,
-    toCents,
     setTaxCents,
     setTipCents,
     updateReceiptItem,

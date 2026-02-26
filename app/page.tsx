@@ -16,6 +16,7 @@ import {
   expandItemsToUnits,
   moneyFromCents,
 } from "@/lib/split";
+import { toCents } from "@/lib/currency";
 import {
   AssignableUnit,
   ChatClaimsPrefill,
@@ -945,14 +946,6 @@ export default function HomePage() {
     );
   }
 
-  function toCents(value: string): number {
-    const numeric = Number(value);
-    if (!Number.isFinite(numeric) || numeric < 0) {
-      return 0;
-    }
-    return Math.round(numeric * 100);
-  }
-
   function updateReceiptItem(
     rowIndex: number,
     updates: Partial<ParsedReceipt["items"][number]>,
@@ -1107,7 +1100,6 @@ export default function HomePage() {
             onAddPersonSubmit={onAddPersonSubmit}
             setNewPerson={setNewPerson}
             removePerson={removePerson}
-            toCents={toCents}
             setTaxCents={setTaxCents}
             setTipCents={setTipCents}
             updateReceiptItem={updateReceiptItem}
@@ -1166,7 +1158,6 @@ export default function HomePage() {
             editingItemRowIndex={editingItemRowIndex}
             setEditingItemRowIndex={setEditingItemRowIndex}
             updateReceiptItem={updateReceiptItem}
-            toCents={toCents}
             togglePersonForCurrentUnit={togglePersonForCurrentUnit}
             selectAllForCurrentUnit={selectAllForCurrentUnit}
             clearForCurrentUnit={clearForCurrentUnit}
