@@ -1114,30 +1114,36 @@ export default function HomePage() {
         )}
         {step === "claims" && (
           <ClaimsStep
-            receiptReady={!!receipt && units.length > 0}
-            peopleCount={people.length}
-            units={units}
-            chatScreenshots={chatScreenshots}
-            chatScreenshotPreviewUrls={chatScreenshotPreviewUrls}
-            chatClaimsContext={chatClaimsContext}
-            isParsingChatClaims={isParsingChatClaims}
-            chatClaimsPrefill={chatClaimsPrefill}
-            assignmentSuggestions={assignmentSuggestions}
-            filteredAssignmentSuggestions={filteredAssignmentSuggestions}
-            missingContextAssignments={missingContextAssignments}
-            keptConfidenceLevels={keptConfidenceLevels}
-            chatFollowUpDraft={chatFollowUpDraft}
-            lastAppliedClaimCount={lastAppliedClaimCount}
-            goToSetup={() => setStep("setup")}
-            goToAssign={() => setStep("assign")}
-            onChatScreenshotsChange={onChatScreenshotsChange}
-            setChatClaimsContext={setChatClaimsContext}
-            removeChatScreenshot={removeChatScreenshot}
-            parseChatClaims={() => parseChatClaims()}
-            toggleConfidenceLevel={toggleConfidenceLevel}
-            setChatFollowUpDraft={setChatFollowUpDraft}
-            submitFollowUpAnswers={submitFollowUpAnswers}
-            applyChatClaimPrefill={applyChatClaimPrefill}
+            state={{
+              receiptReady: !!receipt && units.length > 0,
+              peopleCount: people.length,
+              units,
+              chatScreenshots,
+              chatScreenshotPreviewUrls,
+              chatClaimsContext,
+              isParsingChatClaims,
+              chatClaimsPrefill,
+              assignmentSuggestions,
+              filteredAssignmentSuggestions,
+              missingContextAssignments,
+              keptConfidenceLevels,
+              chatFollowUpDraft,
+              lastAppliedClaimCount,
+            }}
+            actions={{
+              onChatScreenshotsChange,
+              setChatClaimsContext,
+              removeChatScreenshot,
+              parseChatClaims: () => parseChatClaims(),
+              toggleConfidenceLevel,
+              setChatFollowUpDraft,
+              submitFollowUpAnswers,
+              applyChatClaimPrefill,
+            }}
+            navigation={{
+              goToSetup: () => setStep("setup"),
+              goToAssign: () => setStep("assign"),
+            }}
           />
         )}
         {step === "assign" && (

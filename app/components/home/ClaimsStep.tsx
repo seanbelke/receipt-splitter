@@ -19,7 +19,7 @@ type MissingContextAssignment = {
   reason: string;
 };
 
-export type ClaimsStepProps = {
+type ClaimsStepState = {
   receiptReady: boolean;
   peopleCount: number;
   units: AssignableUnit[];
@@ -34,8 +34,9 @@ export type ClaimsStepProps = {
   keptConfidenceLevels: Record<ClaimConfidence, boolean>;
   chatFollowUpDraft: Record<string, string>;
   lastAppliedClaimCount: number;
-  goToSetup: () => void;
-  goToAssign: () => void;
+};
+
+type ClaimsStepActions = {
   onChatScreenshotsChange: (event: ChangeEvent<HTMLInputElement>) => void;
   setChatClaimsContext: (value: string) => void;
   removeChatScreenshot: (index: number) => void;
@@ -46,7 +47,19 @@ export type ClaimsStepProps = {
   applyChatClaimPrefill: () => void;
 };
 
+type ClaimsStepNavigation = {
+  goToSetup: () => void;
+  goToAssign: () => void;
+};
+
+export type ClaimsStepProps = {
+  state: ClaimsStepState;
+  actions: ClaimsStepActions;
+  navigation: ClaimsStepNavigation;
+};
+
 export function ClaimsStep(props: ClaimsStepProps) {
+  const { state, actions, navigation } = props;
   const {
     receiptReady,
     peopleCount,
@@ -62,8 +75,8 @@ export function ClaimsStep(props: ClaimsStepProps) {
     keptConfidenceLevels,
     chatFollowUpDraft,
     lastAppliedClaimCount,
-    goToSetup,
-    goToAssign,
+  } = state;
+  const {
     onChatScreenshotsChange,
     setChatClaimsContext,
     removeChatScreenshot,
@@ -72,7 +85,8 @@ export function ClaimsStep(props: ClaimsStepProps) {
     setChatFollowUpDraft,
     submitFollowUpAnswers,
     applyChatClaimPrefill,
-  } = props;
+  } = actions;
+  const { goToSetup, goToAssign } = navigation;
 
   if (!receiptReady) {
     return (
