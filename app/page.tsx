@@ -1368,6 +1368,11 @@ export default function HomePage() {
                 type="button"
                 onClick={() => setIsImagePreviewOpen(true)}
                 className="group flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1.5 text-left transition hover:bg-slate-100/80"
+                sx={{
+                  minWidth: 0,
+                  justifyContent: "flex-start",
+                  textTransform: "none",
+                }}
               >
                 <span className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white">
                   <Image
@@ -1397,6 +1402,7 @@ export default function HomePage() {
                 aria-label="Remove selected image"
                 title="Remove selected image"
                 className="secondary-btn shrink-0 p-2.5 text-slate-600"
+                sx={{ minWidth: 0 }}
               >
                 <TrashIcon />
               </Button>
