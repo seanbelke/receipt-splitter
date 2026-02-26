@@ -8,7 +8,7 @@ import { toCents } from "@/lib/currency";
 import { moneyFromCents } from "@/lib/split";
 import { ChatIcon, CheckIcon, EditIcon, TrashIcon, UploadIcon, UsersIcon } from "./icons";
 
-export type SetupStepProps = {
+type SetupStepState = {
   file: File | null;
   selectedImageUrl: string | null;
   isParsing: boolean;
@@ -20,8 +20,14 @@ export type SetupStepProps = {
   taxCents: number;
   tipCents: number;
   editingItemRowIndex: number | null;
+};
+
+type SetupStepRefs = {
   fileInputRef: RefObject<HTMLInputElement | null>;
   newPersonInputRef: RefObject<HTMLInputElement | null>;
+};
+
+type SetupStepActions = {
   onFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
   removeSelectedFile: () => void;
   parseReceipt: (event: FormEvent) => Promise<void>;
@@ -33,10 +39,17 @@ export type SetupStepProps = {
   updateReceiptItem: (rowIndex: number, updates: Partial<ParsedReceipt["items"][number]>) => void;
   setEditingItemRowIndex: (index: number | null) => void;
   openImagePreview: () => void;
+};
+
+export type SetupStepProps = {
+  state: SetupStepState;
+  refs: SetupStepRefs;
+  actions: SetupStepActions;
   goToClaims: () => void;
 };
 
 export function SetupStep(props: SetupStepProps) {
+  const { state, refs, actions, goToClaims } = props;
   const {
     file,
     selectedImageUrl,
@@ -49,8 +62,9 @@ export function SetupStep(props: SetupStepProps) {
     taxCents,
     tipCents,
     editingItemRowIndex,
-    fileInputRef,
-    newPersonInputRef,
+  } = state;
+  const { fileInputRef, newPersonInputRef } = refs;
+  const {
     onFileChange,
     removeSelectedFile,
     parseReceipt,
@@ -62,8 +76,7 @@ export function SetupStep(props: SetupStepProps) {
     updateReceiptItem,
     setEditingItemRowIndex,
     openImagePreview,
-    goToClaims,
-  } = props;
+  } = actions;
 
   return (
     <div className="space-y-7">

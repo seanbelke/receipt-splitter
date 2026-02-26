@@ -16,7 +16,6 @@ import {
   expandItemsToUnits,
   moneyFromCents,
 } from "@/lib/split";
-import { toCents } from "@/lib/currency";
 import {
   AssignableUnit,
   ChatClaimsPrefill,
@@ -1081,30 +1080,36 @@ export default function HomePage() {
         )}
         {step === "setup" && (
           <SetupStep
-            file={file}
-            selectedImageUrl={selectedImageUrl}
-            isParsing={isParsing}
-            people={people}
-            newPerson={newPerson}
-            receipt={receipt}
-            units={units}
-            overallSubtotal={overallSubtotal}
-            taxCents={taxCents}
-            tipCents={tipCents}
-            editingItemRowIndex={editingItemRowIndex}
-            fileInputRef={fileInputRef}
-            newPersonInputRef={newPersonInputRef}
-            onFileChange={onFileChange}
-            removeSelectedFile={removeSelectedFile}
-            parseReceipt={parseReceipt}
-            onAddPersonSubmit={onAddPersonSubmit}
-            setNewPerson={setNewPerson}
-            removePerson={removePerson}
-            setTaxCents={setTaxCents}
-            setTipCents={setTipCents}
-            updateReceiptItem={updateReceiptItem}
-            setEditingItemRowIndex={setEditingItemRowIndex}
-            openImagePreview={() => setIsImagePreviewOpen(true)}
+            state={{
+              file,
+              selectedImageUrl,
+              isParsing,
+              people,
+              newPerson,
+              receipt,
+              units,
+              overallSubtotal,
+              taxCents,
+              tipCents,
+              editingItemRowIndex,
+            }}
+            refs={{
+              fileInputRef,
+              newPersonInputRef,
+            }}
+            actions={{
+              onFileChange,
+              removeSelectedFile,
+              parseReceipt,
+              onAddPersonSubmit,
+              setNewPerson,
+              removePerson,
+              setTaxCents,
+              setTipCents,
+              updateReceiptItem,
+              setEditingItemRowIndex,
+              openImagePreview: () => setIsImagePreviewOpen(true),
+            }}
             goToClaims={() => setStep("claims")}
           />
         )}
@@ -1138,41 +1143,47 @@ export default function HomePage() {
         )}
         {step === "assign" && (
           <AssignStep
-            receipt={receipt}
-            units={units}
-            people={people}
-            assignments={assignments}
-            assignMode={assignMode}
-            setAssignMode={setAssignMode}
-            currentUnitIndex={currentUnitIndex}
-            setCurrentUnitIndex={setCurrentUnitIndex}
-            currentPersonIndex={currentPersonIndex}
-            setCurrentPersonIndex={setCurrentPersonIndex}
-            currentUnit={currentUnit}
-            currentPerson={currentPerson}
-            currentAssignedPeople={currentAssignedPeople}
-            currentSourceRowIndex={currentSourceRowIndex}
-            currentSourceItem={currentSourceItem}
-            currentUnitAIPrefill={currentUnitAIPrefill}
-            currentPersonAIPrefills={currentPersonAIPrefills}
-            editingItemRowIndex={editingItemRowIndex}
-            setEditingItemRowIndex={setEditingItemRowIndex}
-            updateReceiptItem={updateReceiptItem}
-            togglePersonForCurrentUnit={togglePersonForCurrentUnit}
-            selectAllForCurrentUnit={selectAllForCurrentUnit}
-            clearForCurrentUnit={clearForCurrentUnit}
-            toggleCurrentPersonForUnit={toggleCurrentPersonForUnit}
-            jumpToItemRow={jumpToItemRow}
-            selectAllItemsForCurrentPerson={selectAllItemsForCurrentPerson}
-            clearAllItemsForCurrentPerson={clearAllItemsForCurrentPerson}
-            moveCurrentUnit={moveCurrentUnit}
-            moveCurrentPerson={moveCurrentPerson}
-            allItemsAssigned={allItemsAssigned}
-            assignPanelHeight={assignPanelHeight}
+            state={{
+              receipt,
+              units,
+              people,
+              assignments,
+              assignMode,
+              currentUnitIndex,
+              currentPersonIndex,
+              currentUnit,
+              currentPerson,
+              currentAssignedPeople,
+              currentSourceRowIndex,
+              currentSourceItem,
+              currentUnitAIPrefill,
+              currentPersonAIPrefills,
+              editingItemRowIndex,
+              allItemsAssigned,
+              assignPanelHeight,
+            }}
+            actions={{
+              setAssignMode,
+              setCurrentUnitIndex,
+              setCurrentPersonIndex,
+              setEditingItemRowIndex,
+              updateReceiptItem,
+              togglePersonForCurrentUnit,
+              selectAllForCurrentUnit,
+              clearForCurrentUnit,
+              toggleCurrentPersonForUnit,
+              jumpToItemRow,
+              selectAllItemsForCurrentPerson,
+              clearAllItemsForCurrentPerson,
+              moveCurrentUnit,
+              moveCurrentPerson,
+              openAiReasoning: () => setIsAiReasoningOpen(true),
+            }}
+            navigation={{
+              goToSetup: () => setStep("setup"),
+              goToResults: () => setStep("results"),
+            }}
             assignContentPanelRef={assignContentPanelRef}
-            openAiReasoning={() => setIsAiReasoningOpen(true)}
-            goToSetup={() => setStep("setup")}
-            goToResults={() => setStep("results")}
           />
         )}
         {step === "results" && (

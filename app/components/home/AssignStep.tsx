@@ -50,17 +50,14 @@ type CurrentPersonPrefill = {
   detail: AIPrefillDetail;
 };
 
-export type AssignStepProps = {
+type AssignStepState = {
   receipt: ParsedReceipt | null;
   units: AssignableUnit[];
   people: string[];
   assignments: Record<string, string[]>;
   assignMode: AssignMode;
-  setAssignMode: (mode: AssignMode) => void;
   currentUnitIndex: number;
-  setCurrentUnitIndex: (index: number) => void;
   currentPersonIndex: number;
-  setCurrentPersonIndex: (index: number) => void;
   currentUnit: AssignableUnit | undefined;
   currentPerson: string | null;
   currentAssignedPeople: string[];
@@ -69,6 +66,14 @@ export type AssignStepProps = {
   currentUnitAIPrefill: AIPrefillDetail | null;
   currentPersonAIPrefills: CurrentPersonPrefill[];
   editingItemRowIndex: number | null;
+  allItemsAssigned: boolean;
+  assignPanelHeight: number | null;
+};
+
+type AssignStepActions = {
+  setAssignMode: (mode: AssignMode) => void;
+  setCurrentUnitIndex: (index: number) => void;
+  setCurrentPersonIndex: (index: number) => void;
   setEditingItemRowIndex: (index: number | null) => void;
   updateReceiptItem: (rowIndex: number, updates: Partial<ParsedReceipt["items"][number]>) => void;
   togglePersonForCurrentUnit: (name: string) => void;
@@ -80,26 +85,36 @@ export type AssignStepProps = {
   clearAllItemsForCurrentPerson: () => void;
   moveCurrentUnit: (delta: number) => void;
   moveCurrentPerson: (delta: number) => void;
-  allItemsAssigned: boolean;
-  assignPanelHeight: number | null;
-  assignContentPanelRef: RefObject<HTMLDivElement | null>;
   openAiReasoning: () => void;
+};
+
+type AssignStepNavigation = {
   goToSetup: () => void;
   goToResults: () => void;
 };
 
+export type AssignStepProps = {
+  state: AssignStepState;
+  actions: AssignStepActions;
+  navigation: AssignStepNavigation;
+  assignContentPanelRef: RefObject<HTMLDivElement | null>;
+};
+
 export function AssignStep(props: AssignStepProps) {
+  const {
+    state,
+    actions,
+    navigation,
+    assignContentPanelRef,
+  } = props;
   const {
     receipt,
     units,
     people,
     assignments,
     assignMode,
-    setAssignMode,
     currentUnitIndex,
-    setCurrentUnitIndex,
     currentPersonIndex,
-    setCurrentPersonIndex,
     currentUnit,
     currentPerson,
     currentAssignedPeople,
@@ -108,6 +123,13 @@ export function AssignStep(props: AssignStepProps) {
     currentUnitAIPrefill,
     currentPersonAIPrefills,
     editingItemRowIndex,
+    allItemsAssigned,
+    assignPanelHeight,
+  } = state;
+  const {
+    setAssignMode,
+    setCurrentUnitIndex,
+    setCurrentPersonIndex,
     setEditingItemRowIndex,
     updateReceiptItem,
     togglePersonForCurrentUnit,
@@ -119,13 +141,9 @@ export function AssignStep(props: AssignStepProps) {
     clearAllItemsForCurrentPerson,
     moveCurrentUnit,
     moveCurrentPerson,
-    allItemsAssigned,
-    assignPanelHeight,
-    assignContentPanelRef,
     openAiReasoning,
-    goToSetup,
-    goToResults,
-  } = props;
+  } = actions;
+  const { goToSetup, goToResults } = navigation;
 
   if (!receipt || units.length === 0) {
     return (
