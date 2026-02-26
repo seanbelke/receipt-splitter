@@ -486,6 +486,25 @@ export default function HomePage() {
     setLastAppliedClaimCount(0);
   }
 
+  function clearReceiptData() {
+    setReceipt(null);
+    setUnits([]);
+    setAssignments({});
+    setTaxCents(0);
+    setTipCents(0);
+    setEditingItemRowIndex(null);
+  }
+
+  function clearChatClaimInputs() {
+    setChatScreenshots([]);
+    setChatClaimsContext("");
+  }
+
+  function clearAiClaimMetadata() {
+    resetChatPrefillState();
+    setAiPrefillByUnit({});
+  }
+
   function onFileChange(event: ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files?.[0] ?? null;
     const changedFile =
@@ -496,16 +515,9 @@ export default function HomePage() {
         (selected.name !== file.name || selected.size !== file.size));
     setFile(selected);
     if (changedFile) {
-      setReceipt(null);
-      setUnits([]);
-      setAssignments({});
-      setTaxCents(0);
-      setTipCents(0);
-      setEditingItemRowIndex(null);
-      setChatScreenshots([]);
-      setChatClaimsContext("");
-      resetChatPrefillState();
-      setAiPrefillByUnit({});
+      clearReceiptData();
+      clearChatClaimInputs();
+      clearAiClaimMetadata();
       setStep("setup");
     }
     if (!selected) {
@@ -516,16 +528,9 @@ export default function HomePage() {
 
   function removeSelectedFile() {
     setFile(null);
-    setReceipt(null);
-    setUnits([]);
-    setAssignments({});
-    setTaxCents(0);
-    setTipCents(0);
-    setEditingItemRowIndex(null);
-    setChatScreenshots([]);
-    setChatClaimsContext("");
-    resetChatPrefillState();
-    setAiPrefillByUnit({});
+    clearReceiptData();
+    clearChatClaimInputs();
+    clearAiClaimMetadata();
     setStep("setup");
     setIsImagePreviewOpen(false);
     setError(null);
@@ -558,14 +563,8 @@ export default function HomePage() {
       setIsParsing(true);
       setError(null);
       setStep("setup");
-      setReceipt(null);
-      setUnits([]);
-      setAssignments({});
-      setTaxCents(0);
-      setTipCents(0);
-      setEditingItemRowIndex(null);
-      resetChatPrefillState();
-      setAiPrefillByUnit({});
+      clearReceiptData();
+      clearAiClaimMetadata();
       setChatClaimsContext("");
       setCurrentUnitIndex(0);
       setCurrentPersonIndex(0);
