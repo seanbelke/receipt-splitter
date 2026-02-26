@@ -12,6 +12,7 @@ import {
 } from "react";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
+import ButtonBase from "@mui/material/ButtonBase";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
 import Container from "@mui/material/Container";
@@ -1364,14 +1365,13 @@ export default function HomePage() {
 
           {file && selectedImageUrl && (
             <div className="soft-card flex items-center justify-between gap-2 rounded-xl p-2 sm:p-3">
-              <Button
-                type="button"
+              <ButtonBase
+                component="button"
                 onClick={() => setIsImagePreviewOpen(true)}
                 className="group flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1.5 text-left transition hover:bg-slate-100/80"
                 sx={{
                   minWidth: 0,
                   justifyContent: "flex-start",
-                  textTransform: "none",
                 }}
               >
                 <span className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white">
@@ -1395,7 +1395,7 @@ export default function HomePage() {
                     {Math.round(file.size / 1024)} KB
                   </span>
                 </span>
-              </Button>
+              </ButtonBase>
               <Button
                 type="button"
                 onClick={removeSelectedFile}
