@@ -15,7 +15,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           styles={{
             body: {
               background:
-                "radial-gradient(circle at 5% 5%, #ffffff, transparent 35%), radial-gradient(circle at 95% 10%, #dcf5ff, transparent 32%), radial-gradient(circle at 100% 100%, #e9f8f4, transparent 35%), #f7f8fb",
+                "radial-gradient(circle at 5% 5%, #ffffff, transparent 35%), radial-gradient(circle at 95% 10%, #d5e8f0, transparent 32%), radial-gradient(circle at 100% 100%, #dbeee4, transparent 35%), #f2f6f7",
             },
             ".mono": {
               fontFamily: "var(--font-mono), monospace",

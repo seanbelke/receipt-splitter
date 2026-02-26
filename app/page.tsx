@@ -71,23 +71,21 @@ function getAssignmentCoverageTone(
   }
 
   const boundedCount = Math.max(1, Math.min(assignedCount, totalPeople));
-  const stepIndex = boundedCount - 1;
-  const normalized = totalPeople <= 1 ? 1 : boundedCount / totalPeople;
-  const hue = Math.max(18, 56 - stepIndex * 6.9 - normalized * 6.9);
-  const saturation = Math.min(92, 72 + stepIndex * 4.6);
-  const lightness = Math.max(62, 96 - stepIndex * 5.2 - normalized * 5.75);
-  const borderLightness = Math.max(44, lightness - 17);
+  const progress = totalPeople <= 1 ? 1 : boundedCount / totalPeople;
+  const bgAlpha = 0.16 + progress * 0.26;
+  const borderAlpha = 0.32 + progress * 0.38;
+  const inkAlpha = 0.72 + progress * 0.2;
 
   return {
     cardClass: "border",
     statusClass: "",
     cardStyle: {
-      backgroundColor: `hsl(${hue} ${saturation}% ${lightness}%)`,
-      borderColor: `hsl(${hue} 44% ${borderLightness}%)`,
-      color: `hsl(${Math.max(16, hue - 14)} 42% 30%)`,
+      backgroundColor: `rgba(45, 114, 143, ${bgAlpha.toFixed(3)})`,
+      borderColor: `rgba(45, 114, 143, ${borderAlpha.toFixed(3)})`,
+      color: `rgba(28, 29, 33, ${Math.min(inkAlpha, 0.92).toFixed(3)})`,
     },
     statusStyle: {
-      color: `hsl(${Math.max(16, hue - 14)} 36% 34%)`,
+      color: `rgba(28, 29, 33, ${Math.min(inkAlpha - 0.08, 0.84).toFixed(3)})`,
     },
   };
 }
