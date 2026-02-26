@@ -2698,7 +2698,7 @@ export default function HomePage() {
         maxWidth="lg"
       >
         <DialogTitle sx={{ pr: 10 }}>
-          <Typography variant="subtitle2" noWrap>
+          <Typography component="span" variant="subtitle2" noWrap>
             {file?.name}
           </Typography>
         </DialogTitle>
