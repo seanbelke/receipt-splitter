@@ -2137,7 +2137,8 @@ export default function HomePage() {
             </p>
             <div className="flex gap-2 overflow-x-auto pb-1 lg:flex-1 lg:min-h-0 lg:flex-col lg:overflow-y-auto lg:overflow-x-visible">
               {jumpNavEntries.map((entry) => (
-                <Button
+                <ButtonBase
+                  component="button"
                   key={entry.key}
                   onClick={entry.onClick}
                   className={`min-w-44 rounded-xl px-3 py-2 text-left text-sm transition lg:min-w-0 ${
@@ -2145,6 +2146,12 @@ export default function HomePage() {
                       ? "bg-teal-700 text-white"
                       : "bg-slate-100 text-slate-800 hover:bg-slate-200"
                   }`}
+                  sx={{
+                    width: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "stretch",
+                  }}
                 >
                   <p className="truncate font-medium">{entry.title}</p>
                   <div
@@ -2152,10 +2159,12 @@ export default function HomePage() {
                       entry.isActive ? "text-teal-50" : "text-slate-600"
                     }`}
                   >
-                    <span className="truncate">{entry.subtitle}</span>
-                    <span>{entry.progress + "/" + entry.progressTotal}</span>
+                    <span className="min-w-0 truncate">{entry.subtitle}</span>
+                    <span className="shrink-0 pl-2">
+                      {entry.progress + "/" + entry.progressTotal}
+                    </span>
                   </div>
-                </Button>
+                </ButtonBase>
               ))}
             </div>
           </aside>
