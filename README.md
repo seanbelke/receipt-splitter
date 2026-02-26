@@ -5,18 +5,12 @@ Basic full-stack app for splitting restaurant receipts when one person pays.
 ## Usage
 
 1. Upload a receipt image.
-2. Parse line items with OpenAI API.
+2. Automatically parse line items with OpenAI API.
 3. Add the names of everyone involved.
 4. Optionally upload group chat screenshots to pre-fill item assignment suggestions.
 5. If needed, answer up to two rounds of AI follow-up questions to disambiguate identities/claims.
 6. Review/apply assignment-level suggestions, then assign remaining item units manually.
 7. Auto-calculate what each person owes, including proportional tax and tip.
-
-## Tech
-
-- Next.js (App Router) + TypeScript
-- Tailwind CSS
-- OpenAI API (`responses` endpoint)
 
 ## Setup
 
@@ -49,6 +43,8 @@ npm test
 
 This runs all unit tests with Node's built-in test runner.
 
-## Notes
+## Tech
 
-- Receipt rows with `quantity > 1` are expanded into separate assignable units.
+- Next.js (App Router) + TypeScript
+- Tailwind CSS
+- OpenAI API (`responses` endpoint)
