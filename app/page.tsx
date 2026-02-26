@@ -10,6 +10,18 @@ import {
   useRef,
   useState,
 } from "react";
+import Alert from "@mui/material/Alert";
+import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
+import CircularProgress from "@mui/material/CircularProgress";
+import Container from "@mui/material/Container";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import {
   calculateSplitBreakdown,
   expandItemsToUnits,
@@ -1352,7 +1364,7 @@ export default function HomePage() {
 
           {file && selectedImageUrl && (
             <div className="soft-card flex items-center justify-between gap-2 rounded-xl p-2 sm:p-3">
-              <button
+              <Button
                 type="button"
                 onClick={() => setIsImagePreviewOpen(true)}
                 className="group flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1.5 text-left transition hover:bg-slate-100/80"
@@ -1378,8 +1390,8 @@ export default function HomePage() {
                     {Math.round(file.size / 1024)} KB
                   </span>
                 </span>
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={removeSelectedFile}
                 aria-label="Remove selected image"
@@ -1387,11 +1399,11 @@ export default function HomePage() {
                 className="secondary-btn shrink-0 p-2.5 text-slate-600"
               >
                 <TrashIcon />
-              </button>
+              </Button>
             </div>
           )}
 
-          <button
+          <Button
             type="submit"
             disabled={!file || isParsing}
             aria-busy={isParsing}
@@ -1399,14 +1411,9 @@ export default function HomePage() {
           >
             {isParsing ? (
               <>
-                <span className="loading-spinner" aria-hidden="true" />
+                <CircularProgress color="inherit" size={16} />
                 <span className="inline-flex items-center">
                   Parsing receipt
-                  <span className="loading-dots" aria-hidden="true">
-                    <span>.</span>
-                    <span>.</span>
-                    <span>.</span>
-                  </span>
                 </span>
               </>
             ) : (
@@ -1415,7 +1422,7 @@ export default function HomePage() {
                 Parse receipt
               </>
             )}
-          </button>
+          </Button>
         </form>
 
         <div className="space-y-2">
@@ -1431,13 +1438,13 @@ export default function HomePage() {
           </p>
           <div className="flex flex-wrap gap-2">
             {people.map((person) => (
-              <button
+              <Button
                 key={person}
                 onClick={() => removePerson(person)}
                 className="rounded-full bg-teal-50 px-3 py-1 text-sm text-teal-900 transition hover:bg-rose-50 hover:text-rose-900"
               >
                 {person} ×
-              </button>
+              </Button>
             ))}
             {people.length === 0 && (
               <p className="text-sm text-slate-500">No people added yet.</p>
@@ -1455,13 +1462,13 @@ export default function HomePage() {
               placeholder="Add a name"
               className="input-field flex-1"
             />
-            <button
+            <Button
               type="submit"
               className="secondary-btn inline-flex items-center gap-2 px-4 py-2"
             >
               <UsersIcon />
               Add person
-            </button>
+            </Button>
           </form>
         </div>
 
@@ -1548,7 +1555,7 @@ export default function HomePage() {
                                     : "border-transparent bg-transparent"
                                 }`}
                               />
-                              <button
+                              <Button
                                 type="button"
                                 onClick={() =>
                                   setEditingItemRowIndex(isEditing ? null : index)
@@ -1560,7 +1567,7 @@ export default function HomePage() {
                                 title={isEditing ? "Done" : "Edit name/price"}
                               >
                                 {isEditing ? <CheckIcon /> : <EditIcon />}
-                              </button>
+                              </Button>
                             </div>
                           </td>
                           <td className="px-3 py-2 text-slate-600">
@@ -1601,14 +1608,14 @@ export default function HomePage() {
           )}
         </section>
 
-        <button
+        <Button
           onClick={() => setStep("claims")}
           disabled={people.length === 0 || !receipt || isParsing}
           className="primary-btn inline-flex items-center gap-2 px-5 py-3"
         >
           <ChatIcon />
           {receipt ? "Continue to chat claims pre-fill" : "Waiting for parsed receipt"}
-        </button>
+        </Button>
       </div>
     );
   }
@@ -1627,12 +1634,12 @@ export default function HomePage() {
           <p className="text-sm text-slate-700">
             Parse your receipt first so chat screenshots can map to real receipt items.
           </p>
-          <button
+          <Button
             onClick={() => setStep("setup")}
             className="secondary-btn px-4 py-2"
           >
             Back to setup
-          </button>
+          </Button>
         </div>
       );
     }
@@ -1650,12 +1657,12 @@ export default function HomePage() {
           <p className="text-sm text-slate-700">
             Add at least one person before pre-filling from chat screenshots.
           </p>
-          <button
+          <Button
             onClick={() => setStep("setup")}
             className="secondary-btn px-4 py-2"
           >
             Back to setup
-          </button>
+          </Button>
         </div>
       );
     }
@@ -1752,7 +1759,7 @@ export default function HomePage() {
                     {Math.round(screenshot.size / 1024)} KB
                   </p>
                 </div>
-                <button
+                <Button
                   type="button"
                   onClick={() => removeChatScreenshot(index)}
                   className="secondary-btn p-2 text-slate-600"
@@ -1760,14 +1767,14 @@ export default function HomePage() {
                   title="Remove screenshot"
                 >
                   <TrashIcon />
-                </button>
+                </Button>
               </div>
             ))}
           </div>
         )}
 
         <div className="flex flex-wrap gap-2">
-          <button
+          <Button
             type="button"
             onClick={() => {
               void parseChatClaims();
@@ -1780,7 +1787,7 @@ export default function HomePage() {
           >
             {isParsingChatClaims ? (
               <>
-                <span className="loading-spinner" aria-hidden="true" />
+                <CircularProgress color="inherit" size={16} />
                 <span>Analyzing screenshots</span>
               </>
             ) : (
@@ -1789,14 +1796,14 @@ export default function HomePage() {
                 Analyze screenshots
               </>
             )}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={() => setStep("assign")}
             className="secondary-btn px-4 py-2"
           >
             Skip for now
-          </button>
+          </Button>
         </div>
 
         {chatClaimsPrefill && (
@@ -1813,7 +1820,7 @@ export default function HomePage() {
                 {(["high", "medium", "low"] as const).map((level) => {
                   const selected = keptConfidenceLevels[level];
                   return (
-                    <button
+                    <Button
                       key={level}
                       type="button"
                       onClick={() => toggleConfidenceLevel(level)}
@@ -1824,7 +1831,7 @@ export default function HomePage() {
                       }`}
                     >
                       {selected ? "Keep" : "Drop"} {level}
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
@@ -1877,14 +1884,14 @@ export default function HomePage() {
                   ))}
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <button
+                  <Button
                     type="button"
                     onClick={submitFollowUpAnswers}
                     disabled={isParsingChatClaims}
                     className="secondary-btn px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Submit answers and rerun AI
-                  </button>
+                  </Button>
                   <p className="text-xs text-slate-500">
                     {chatClaimsPrefill.maxRounds - chatClaimsPrefill.round} follow-up round
                     {chatClaimsPrefill.maxRounds - chatClaimsPrefill.round === 1 ? "" : "s"} remaining.
@@ -1939,14 +1946,14 @@ export default function HomePage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <button
+                  <Button
                     type="button"
                     onClick={applyChatClaimPrefill}
                     disabled={filteredAssignmentSuggestions.length === 0}
                     className="primary-btn px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Apply suggestions
-                  </button>
+                  </Button>
                   {lastAppliedClaimCount > 0 && (
                     <p className="text-sm text-slate-700">
                       Applied {lastAppliedClaimCount} assignment
@@ -1964,13 +1971,13 @@ export default function HomePage() {
           </div>
         )}
 
-        <button
+        <Button
           onClick={() => setStep("assign")}
           className="primary-btn inline-flex items-center gap-2 px-5 py-3"
         >
           <AssignIcon />
           Continue to assignment
-        </button>
+        </Button>
       </div>
     );
   }
@@ -1989,12 +1996,12 @@ export default function HomePage() {
           <p className="text-sm text-slate-700">
             Wait for receipt parsing to finish before assigning items.
           </p>
-          <button
+          <Button
             onClick={() => setStep("setup")}
             className="secondary-btn px-4 py-2"
           >
             Back to setup
-          </button>
+          </Button>
         </div>
       );
     }
@@ -2012,12 +2019,12 @@ export default function HomePage() {
           <p className="text-sm text-slate-700">
             Add at least one person before assigning items.
           </p>
-          <button
+          <Button
             onClick={() => setStep("setup")}
             className="secondary-btn px-4 py-2"
           >
             Back to setup
-          </button>
+          </Button>
         </div>
       );
     }
@@ -2079,7 +2086,7 @@ export default function HomePage() {
         <div className="soft-card rounded-2xl p-4">
           <p className="text-sm text-slate-600">Assignment mode</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <button
+            <Button
               onClick={() => setAssignMode("byItem")}
               className={`rounded-lg px-4 py-2 text-sm transition ${
                 assignMode === "byItem"
@@ -2088,8 +2095,8 @@ export default function HomePage() {
               }`}
             >
               View each item
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => setAssignMode("byPerson")}
               className={`rounded-lg px-4 py-2 text-sm transition ${
                 assignMode === "byPerson"
@@ -2098,15 +2105,15 @@ export default function HomePage() {
               }`}
             >
               View each person
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={() => setIsAiReasoningOpen(true)}
               disabled={!hasAiPrefillInCurrentContext}
               className="secondary-btn px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-40"
             >
               View AI prefill details
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -2124,7 +2131,7 @@ export default function HomePage() {
             </p>
             <div className="flex gap-2 overflow-x-auto pb-1 lg:flex-1 lg:min-h-0 lg:flex-col lg:overflow-y-auto lg:overflow-x-visible">
               {jumpNavEntries.map((entry) => (
-                <button
+                <Button
                   key={entry.key}
                   onClick={entry.onClick}
                   className={`min-w-44 rounded-xl px-3 py-2 text-left text-sm transition lg:min-w-0 ${
@@ -2142,7 +2149,7 @@ export default function HomePage() {
                     <span className="truncate">{entry.subtitle}</span>
                     <span>{entry.progress + "/" + entry.progressTotal}</span>
                   </div>
-                </button>
+                </Button>
               ))}
             </div>
           </aside>
@@ -2171,7 +2178,7 @@ export default function HomePage() {
                           : "border-transparent bg-transparent"
                       }`}
                     />
-                    <button
+                    <Button
                       type="button"
                       onClick={() =>
                         setEditingItemRowIndex(
@@ -2193,7 +2200,7 @@ export default function HomePage() {
                       ) : (
                         <EditIcon />
                       )}
-                    </button>
+                    </Button>
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
                     <label className="text-sm text-slate-600">
@@ -2239,7 +2246,7 @@ export default function HomePage() {
                 {people.map((person) => {
                   const selected = currentAssignedPeople.includes(person);
                   return (
-                    <button
+                    <Button
                       key={person}
                       onClick={() => togglePersonForCurrentUnit(person)}
                       className={`rounded-full px-4 py-2 text-sm transition ${
@@ -2249,24 +2256,24 @@ export default function HomePage() {
                       }`}
                     >
                       {person}
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
-                <button
+                <Button
                   onClick={selectAllForCurrentUnit}
                   className="secondary-btn px-3 py-2 text-sm text-teal-900"
                 >
                   Select all
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={clearForCurrentUnit}
                   className="secondary-btn px-3 py-2 text-sm text-slate-700"
                 >
                   Clear
-                </button>
+                </Button>
                 <p className="self-center text-sm text-slate-600">
                   Selected: {selectedCount}
                 </p>
@@ -2306,7 +2313,7 @@ export default function HomePage() {
                       key={unit.id}
                       className="flex items-center gap-2"
                     >
-                      <button
+                      <Button
                         onClick={() => toggleCurrentPersonForUnit(unit.id)}
                         style={selected ? undefined : claimedByOthers ? coverageTone.cardStyle : undefined}
                         className={`flex flex-1 flex-col items-start rounded-xl px-4 py-3 text-left text-sm transition ${
@@ -2341,8 +2348,8 @@ export default function HomePage() {
                         >
                           {statusLabel}
                         </span>
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
                         onClick={() => jumpToItemRow(unit.sourceRowIndex, true)}
                         className={`rounded-md p-2 transition ${
@@ -2354,32 +2361,32 @@ export default function HomePage() {
                         title="Edit this item"
                       >
                         <EditIcon className="h-3.5 w-3.5" />
-                      </button>
+                      </Button>
                     </div>
                   );
                 })}
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
-                <button
+                <Button
                   onClick={selectAllItemsForCurrentPerson}
                   className="secondary-btn px-3 py-2 text-sm text-teal-900"
                 >
                   Select all items
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={clearAllItemsForCurrentPerson}
                   className="secondary-btn px-3 py-2 text-sm text-slate-700"
                 >
                   Clear all items
-                </button>
+                </Button>
               </div>
             </div>
           )}
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <button
+          <Button
             onClick={() =>
               assignMode === "byItem"
                 ? moveCurrentUnit(-1)
@@ -2393,8 +2400,8 @@ export default function HomePage() {
             className="secondary-btn px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Previous
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() =>
               assignMode === "byItem"
                 ? moveCurrentUnit(1)
@@ -2408,15 +2415,15 @@ export default function HomePage() {
             className="secondary-btn px-4 py-2 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Next
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setStep("results")}
             disabled={!allItemsAssigned}
             className="primary-btn inline-flex items-center gap-2 px-4 py-2"
           >
             <ResultIcon />
             See results
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -2451,12 +2458,12 @@ export default function HomePage() {
             Tip: ${moneyFromCents(tipCents)}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <button
+            <Button
               onClick={openHtmlReportPreview}
               className="secondary-btn px-4 py-2"
             >
               View HTML report
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -2508,72 +2515,76 @@ export default function HomePage() {
   }
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mb-8">
-        <p className="mono text-xs uppercase tracking-[0.18em] text-slate-500">
+    <Container maxWidth="lg" sx={{ minHeight: "100vh", py: { xs: 4, sm: 6 } }}>
+      <Stack spacing={3} sx={{ mb: 4 }}>
+        <Typography className="mono" variant="overline" color="text.secondary" sx={{ letterSpacing: "0.18em" }}>
           Receipt Splitter
-        </p>
-        <p className="mt-1 text-sm text-slate-700">
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
           Progress: Step {stepIndex(step)} of 4
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2">
+        </Typography>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           {STEP_ORDER.map((stepName) => {
             const isCurrent = stepName === step;
             const isDone = stepIndex(stepName) < stepIndex(step);
             const canGoToStep = isDone;
             return (
-              <button
+              <Chip
                 key={stepName}
-                type="button"
-                onClick={() => {
-                  if (canGoToStep) {
-                    setStep(stepName);
-                  }
-                }}
+                label={stepName}
+                onClick={
+                  canGoToStep
+                    ? () => {
+                        setStep(stepName);
+                      }
+                    : undefined
+                }
+                clickable={canGoToStep}
                 aria-current={isCurrent ? "step" : undefined}
-                disabled={!canGoToStep && !isCurrent}
-                className={`rounded-full px-3 py-1 text-xs font-medium capitalize transition ${
-                  isCurrent
-                    ? "bg-teal-700 text-white"
+                sx={{
+                  textTransform: "capitalize",
+                  fontWeight: 600,
+                  ...(isCurrent
+                    ? {
+                        bgcolor: "primary.main",
+                        color: "common.white",
+                      }
                     : isDone
-                      ? "bg-teal-100 text-teal-900 hover:bg-teal-200"
-                      : "bg-slate-200/70 text-slate-600"
-                } ${!canGoToStep && !isCurrent ? "cursor-not-allowed" : ""}`}
-              >
-                {stepName}
-              </button>
+                      ? {
+                          bgcolor: "primary.50",
+                          color: "primary.dark",
+                        }
+                      : {
+                          bgcolor: "grey.200",
+                          color: "text.secondary",
+                        }),
+                }}
+              />
             );
           })}
-        </div>
-      </div>
+        </Stack>
+      </Stack>
 
-      <section className="surface-panel rounded-3xl p-6 sm:p-8">
+      <Paper className="surface-panel" sx={{ borderRadius: 4, p: { xs: 3, sm: 4 } }}>
         {error && (
-          <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <Alert severity="error" sx={{ mb: 2 }}>
             {error}
-          </p>
+          </Alert>
         )}
         {step === "setup" && renderSetupStep()}
         {step === "claims" && renderClaimsStep()}
         {step === "assign" && renderAssignStep()}
         {step === "results" && renderResultsStep()}
-      </section>
+      </Paper>
 
-      {isAiReasoningOpen && step === "assign" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-3 sm:p-6">
-          <div className="w-full max-w-3xl rounded-2xl bg-white p-4 shadow-2xl sm:p-5">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <p className="text-sm font-medium text-slate-700">
-                AI prefill details
-              </p>
-              <button
-                type="button"
-                onClick={() => setIsAiReasoningOpen(false)}
-                className="secondary-btn px-3 py-2 text-sm"
-              >
-                Close
-              </button>
-            </div>
+      <Dialog
+        open={isAiReasoningOpen && step === "assign"}
+        onClose={() => setIsAiReasoningOpen(false)}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogTitle>AI prefill details</DialogTitle>
+        <DialogContent dividers>
 
             {assignMode === "byItem" ? (
               currentUnitAIPrefill && currentUnit ? (
@@ -2648,62 +2659,48 @@ export default function HomePage() {
                 </p>
               )
             ) : null}
-          </div>
-        </div>
-      )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsAiReasoningOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
-      {reportHtmlPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-3 sm:p-6">
-          <div className="w-full max-w-6xl rounded-2xl bg-white p-3 shadow-2xl sm:p-4">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-medium text-slate-700">
-                HTML report preview
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={printHtmlReport}
-                  className="secondary-btn px-3 py-2 text-sm"
-                >
-                  Print
-                </button>
-                <button
-                  onClick={() => setReportHtmlPreview(null)}
-                  className="secondary-btn px-3 py-2 text-sm"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
+      <Dialog
+        open={!!reportHtmlPreview}
+        onClose={() => setReportHtmlPreview(null)}
+        fullWidth
+        maxWidth="xl"
+      >
+        <DialogTitle>HTML report preview</DialogTitle>
+        <DialogContent dividers>
             <iframe
               title="Receipt split report preview"
-              srcDoc={reportHtmlPreview}
+              srcDoc={reportHtmlPreview ?? undefined}
               className="h-[72vh] w-full rounded-xl border border-slate-200 bg-white"
             />
-          </div>
-        </div>
-      )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={printHtmlReport}>Print</Button>
+          <Button onClick={() => setReportHtmlPreview(null)}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
-      {isImagePreviewOpen && selectedImageUrl && file && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/75 p-3 sm:p-6"
-          onClick={() => setIsImagePreviewOpen(false)}
-        >
-          <div
-            className="w-full max-w-4xl rounded-2xl bg-white p-3 shadow-2xl sm:p-4"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <p className="truncate text-sm font-medium text-slate-700">
-                {file.name}
-              </p>
-              <button
-                type="button"
-                onClick={() => setIsImagePreviewOpen(false)}
-                className="secondary-btn px-3 py-2 text-sm"
-              >
-                Close
-              </button>
-            </div>
+      <Dialog
+        open={isImagePreviewOpen && !!selectedImageUrl && !!file}
+        onClose={() => setIsImagePreviewOpen(false)}
+        fullWidth
+        maxWidth="lg"
+      >
+        <DialogTitle sx={{ pr: 10 }}>
+          <Typography variant="subtitle2" noWrap>
+            {file?.name}
+          </Typography>
+        </DialogTitle>
+        <DialogActions sx={{ px: 3, pt: 0 }}>
+          <Button onClick={() => setIsImagePreviewOpen(false)}>Close</Button>
+        </DialogActions>
+        <DialogContent>
+          {selectedImageUrl && file ? (
             <Image
               src={selectedImageUrl}
               alt={`Full-size selected receipt image: ${file.name}`}
@@ -2712,9 +2709,9 @@ export default function HomePage() {
               unoptimized
               className="max-h-[78vh] w-full rounded-xl border border-slate-200 bg-slate-50 object-contain"
             />
-          </div>
-        </div>
-      )}
-    </main>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </Container>
   );
 }
