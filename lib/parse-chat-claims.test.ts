@@ -64,7 +64,7 @@ function makeClient(response: MockResponse | Error): ResponseClient {
 }
 
 test("parseChatClaimsRequest includes optional user context in model prompt", async () => {
-  let capturedArgs: Parameters<OpenAI["responses"]["create"]>[0] | null = null;
+  let capturedArgs: unknown = null;
   const create = (async (...args: Parameters<OpenAI["responses"]["create"]>) => {
     capturedArgs = args[0];
     return {
@@ -82,7 +82,9 @@ test("parseChatClaimsRequest includes optional user context in model prompt", as
   );
 
   assert.equal(result.status, 200);
-  const input = JSON.stringify(capturedArgs?.input ?? "");
+  const input = JSON.stringify(
+    (capturedArgs as { input?: unknown } | null)?.input ?? "",
+  );
   assert.match(
     input,
     /Additional user context \(treat as authoritative when mapping names\/aliases\): I am Alice\. Socks is Bob\./,

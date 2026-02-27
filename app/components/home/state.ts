@@ -81,11 +81,13 @@ export const initialHomeState: HomeState = {
   editingItemRowIndex: null,
 };
 
-type SetFieldAction<K extends keyof HomeState = keyof HomeState> = {
-  type: "SET_FIELD";
-  key: K;
-  value: StateSetter<HomeState[K]>;
-};
+type SetFieldAction = {
+  [K in keyof HomeState]: {
+    type: "SET_FIELD";
+    key: K;
+    value: StateSetter<HomeState[K]>;
+  };
+}[keyof HomeState];
 
 type ReceiptParseStartedAction = {
   type: "RECEIPT_PARSE_STARTED";
@@ -128,6 +130,17 @@ export type HomeAction =
   | ClearChatClaimInputsAction
   | ClearAiClaimMetadataAction;
 
+export function setHomeField<K extends keyof HomeState>(
+  key: K,
+  value: StateSetter<HomeState[K]>,
+): SetFieldAction {
+  return {
+    type: "SET_FIELD",
+    key,
+    value,
+  } as SetFieldAction;
+}
+
 function withResetChatPrefill(state: HomeState): HomeState {
   return {
     ...state,
@@ -168,11 +181,14 @@ function withClearAiClaimMetadata(state: HomeState): HomeState {
 
 export function homeReducer(state: HomeState, action: HomeAction): HomeState {
   switch (action.type) {
-    case "SET_FIELD":
+    case "SET_FIELD": {
+      const key = action.key as keyof HomeState;
+      const value = action.value as StateSetter<HomeState[typeof key]>;
       return {
         ...state,
-        [action.key]: resolveNext(action.value, state[action.key]),
+        [key]: resolveNext(value, state[key]),
       };
+    }
     case "RECEIPT_PARSE_STARTED":
       return {
         ...withClearAiClaimMetadata(withClearReceiptData(state)),

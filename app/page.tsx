@@ -38,7 +38,12 @@ import {
   FollowUpAnswer,
   Step,
 } from "@/app/components/home/types";
-import { homeReducer, initialHomeState } from "@/app/components/home/state";
+import {
+  HomeState,
+  homeReducer,
+  initialHomeState,
+  setHomeField,
+} from "@/app/components/home/state";
 
 function escapeHtml(value: string): string {
   return value
@@ -240,15 +245,11 @@ export default function HomePage() {
   const newPersonInputRef = useRef<HTMLInputElement>(null);
   const assignContentPanelRef = useRef<HTMLDivElement>(null);
 
-  function setField<K extends keyof typeof state>(
+  function setField<K extends keyof HomeState>(
     key: K,
-    value: typeof state[K] | ((prev: typeof state[K]) => typeof state[K]),
+    value: HomeState[K] | ((prev: HomeState[K]) => HomeState[K]),
   ) {
-    dispatch({
-      type: "SET_FIELD",
-      key,
-      value,
-    });
+    dispatch(setHomeField(key, value));
   }
 
   const setStep = (value: Step | ((prev: Step) => Step)) =>
@@ -448,19 +449,19 @@ export default function HomePage() {
   );
 
   useEffect(() => {
-    dispatch({
-      type: "SET_FIELD",
-      key: "currentUnitIndex",
-      value: (prev: number) => Math.max(0, Math.min(units.length - 1, prev)),
-    });
+    dispatch(
+      setHomeField("currentUnitIndex", (prev) =>
+        Math.max(0, Math.min(units.length - 1, prev)),
+      ),
+    );
   }, [units.length]);
 
   useEffect(() => {
-    dispatch({
-      type: "SET_FIELD",
-      key: "currentPersonIndex",
-      value: (prev: number) => Math.max(0, Math.min(people.length - 1, prev)),
-    });
+    dispatch(
+      setHomeField("currentPersonIndex", (prev) =>
+        Math.max(0, Math.min(people.length - 1, prev)),
+      ),
+    );
   }, [people.length]);
 
   useEffect(() => {
@@ -468,18 +469,18 @@ export default function HomePage() {
       return;
     }
     if (editingItemRowIndex >= receipt.items.length) {
-      dispatch({ type: "SET_FIELD", key: "editingItemRowIndex", value: null });
+      dispatch(setHomeField("editingItemRowIndex", null));
     }
   }, [receipt, editingItemRowIndex]);
 
   useEffect(() => {
     if (!file) {
-      dispatch({ type: "SET_FIELD", key: "selectedImageUrl", value: null });
+      dispatch(setHomeField("selectedImageUrl", null));
       return;
     }
 
     const objectUrl = URL.createObjectURL(file);
-    dispatch({ type: "SET_FIELD", key: "selectedImageUrl", value: objectUrl });
+    dispatch(setHomeField("selectedImageUrl", objectUrl));
 
     return () => {
       URL.revokeObjectURL(objectUrl);
@@ -490,7 +491,7 @@ export default function HomePage() {
     const nextUrls = chatScreenshots.map((screenshot) =>
       URL.createObjectURL(screenshot),
     );
-    dispatch({ type: "SET_FIELD", key: "chatScreenshotPreviewUrls", value: nextUrls });
+    dispatch(setHomeField("chatScreenshotPreviewUrls", nextUrls));
 
     return () => {
       nextUrls.forEach((url) => URL.revokeObjectURL(url));
@@ -499,21 +500,19 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!chatClaimsPrefill) {
-      dispatch({ type: "SET_FIELD", key: "chatFollowUpDraft", value: {} });
+      dispatch(setHomeField("chatFollowUpDraft", {}));
       return;
     }
 
-    dispatch({
-      type: "SET_FIELD",
-      key: "chatFollowUpDraft",
-      value: (prev: Record<string, string>) => {
+    dispatch(
+      setHomeField("chatFollowUpDraft", (prev) => {
         const next: Record<string, string> = {};
         chatClaimsPrefill.followUpQuestions.forEach((question) => {
           next[question.id] = prev[question.id] ?? "";
         });
         return next;
-      },
-    });
+      }),
+    );
   }, [chatClaimsPrefill]);
 
   useEffect(() => {
@@ -523,7 +522,7 @@ export default function HomePage() {
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        dispatch({ type: "SET_FIELD", key: "isImagePreviewOpen", value: false });
+        dispatch(setHomeField("isImagePreviewOpen", false));
       }
     };
 
@@ -539,21 +538,22 @@ export default function HomePage() {
       typeof window === "undefined" ||
       typeof ResizeObserver === "undefined"
     ) {
-      dispatch({ type: "SET_FIELD", key: "assignPanelHeight", value: null });
+      dispatch(setHomeField("assignPanelHeight", null));
       return;
     }
 
     const desktopQuery = window.matchMedia("(min-width: 1024px)");
     const updateHeight = () => {
       if (!desktopQuery.matches) {
-        dispatch({ type: "SET_FIELD", key: "assignPanelHeight", value: null });
+        dispatch(setHomeField("assignPanelHeight", null));
         return;
       }
-      dispatch({
-        type: "SET_FIELD",
-        key: "assignPanelHeight",
-        value: assignContentPanelRef.current?.offsetHeight ?? null,
-      });
+      dispatch(
+        setHomeField(
+          "assignPanelHeight",
+          assignContentPanelRef.current?.offsetHeight ?? null,
+        ),
+      );
     };
 
     updateHeight();
