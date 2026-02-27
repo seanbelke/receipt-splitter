@@ -5,8 +5,8 @@ import {
   FormEvent,
   useEffect,
   useMemo,
+  useReducer,
   useRef,
-  useState,
 } from "react";
 import Alert from "@mui/material/Alert";
 import Container from "@mui/material/Container";
@@ -38,6 +38,12 @@ import {
   FollowUpAnswer,
   Step,
 } from "@/app/components/home/types";
+import {
+  HomeState,
+  homeReducer,
+  initialHomeState,
+  setHomeField,
+} from "@/app/components/home/state";
 
 function escapeHtml(value: string): string {
   return value
@@ -202,60 +208,140 @@ function buildHtmlReport(params: {
 }
 
 export default function HomePage() {
-  const [step, setStep] = useState<Step>("setup");
-  const [file, setFile] = useState<File | null>(null);
-  const [receipt, setReceipt] = useState<ParsedReceipt | null>(null);
-  const [units, setUnits] = useState<AssignableUnit[]>([]);
-  const [people, setPeople] = useState<string[]>([]);
-  const [newPerson, setNewPerson] = useState("");
-  const [currentUnitIndex, setCurrentUnitIndex] = useState(0);
-  const [currentPersonIndex, setCurrentPersonIndex] = useState(0);
-  const [assignMode, setAssignMode] = useState<AssignMode>("byItem");
-  const [assignments, setAssignments] = useState<Record<string, string[]>>({});
-  const [taxCents, setTaxCents] = useState(0);
-  const [tipCents, setTipCents] = useState(0);
-  const [isParsing, setIsParsing] = useState(false);
-  const [isParsingChatClaims, setIsParsingChatClaims] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
-  const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
-  const [chatScreenshots, setChatScreenshots] = useState<File[]>([]);
-  const [chatClaimsContext, setChatClaimsContext] = useState("");
-  const [chatScreenshotPreviewUrls, setChatScreenshotPreviewUrls] = useState<
-    string[]
-  >([]);
-  const [chatClaimsPrefill, setChatClaimsPrefill] =
-    useState<ChatClaimsPrefill | null>(null);
-  const [chatFollowUpDraft, setChatFollowUpDraft] = useState<
-    Record<string, string>
-  >({});
-  const [chatFollowUpHistory, setChatFollowUpHistory] = useState<
-    FollowUpAnswer[]
-  >([]);
-  const [keptConfidenceLevels, setKeptConfidenceLevels] = useState<
-    Record<ClaimConfidence, boolean>
-  >({
-    high: true,
-    medium: true,
-    low: true,
-  });
-  const [aiPrefillByUnit, setAiPrefillByUnit] = useState<
-    Record<string, AIPrefillDetail>
-  >({});
-  const [isAiReasoningOpen, setIsAiReasoningOpen] = useState(false);
-  const [lastAppliedClaimCount, setLastAppliedClaimCount] = useState(0);
-  const [reportHtmlPreview, setReportHtmlPreview] = useState<string | null>(
-    null,
-  );
-  const [assignPanelHeight, setAssignPanelHeight] = useState<number | null>(
-    null,
-  );
-  const [editingItemRowIndex, setEditingItemRowIndex] = useState<number | null>(
-    null,
-  );
+  const [state, dispatch] = useReducer(homeReducer, initialHomeState);
+  const {
+    step,
+    file,
+    receipt,
+    units,
+    people,
+    newPerson,
+    currentUnitIndex,
+    currentPersonIndex,
+    assignMode,
+    assignments,
+    taxCents,
+    tipCents,
+    isParsing,
+    isParsingChatClaims,
+    error,
+    selectedImageUrl,
+    isImagePreviewOpen,
+    chatScreenshots,
+    chatClaimsContext,
+    chatScreenshotPreviewUrls,
+    chatClaimsPrefill,
+    chatFollowUpDraft,
+    chatFollowUpHistory,
+    keptConfidenceLevels,
+    aiPrefillByUnit,
+    isAiReasoningOpen,
+    lastAppliedClaimCount,
+    reportHtmlPreview,
+    assignPanelHeight,
+    editingItemRowIndex,
+  } = state;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const newPersonInputRef = useRef<HTMLInputElement>(null);
   const assignContentPanelRef = useRef<HTMLDivElement>(null);
+
+  function setField<K extends keyof HomeState>(
+    key: K,
+    value: HomeState[K] | ((prev: HomeState[K]) => HomeState[K]),
+  ) {
+    dispatch(setHomeField(key, value));
+  }
+
+  const setStep = (value: Step | ((prev: Step) => Step)) =>
+    setField("step", value);
+  const setFile = (value: File | null | ((prev: File | null) => File | null)) =>
+    setField("file", value);
+  const setReceipt = (
+    value:
+      | ParsedReceipt
+      | null
+      | ((prev: ParsedReceipt | null) => ParsedReceipt | null),
+  ) => setField("receipt", value);
+  const setUnits = (
+    value: AssignableUnit[] | ((prev: AssignableUnit[]) => AssignableUnit[]),
+  ) => setField("units", value);
+  const setPeople = (value: string[] | ((prev: string[]) => string[])) =>
+    setField("people", value);
+  const setNewPerson = (value: string | ((prev: string) => string)) =>
+    setField("newPerson", value);
+  const setCurrentUnitIndex = (
+    value: number | ((prev: number) => number),
+  ) => setField("currentUnitIndex", value);
+  const setCurrentPersonIndex = (
+    value: number | ((prev: number) => number),
+  ) => setField("currentPersonIndex", value);
+  const setAssignMode = (
+    value: AssignMode | ((prev: AssignMode) => AssignMode),
+  ) => setField("assignMode", value);
+  const setAssignments = (
+    value:
+      | Record<string, string[]>
+      | ((prev: Record<string, string[]>) => Record<string, string[]>),
+  ) => setField("assignments", value);
+  const setTaxCents = (value: number | ((prev: number) => number)) =>
+    setField("taxCents", value);
+  const setTipCents = (value: number | ((prev: number) => number)) =>
+    setField("tipCents", value);
+  const setIsParsingChatClaims = (
+    value: boolean | ((prev: boolean) => boolean),
+  ) => setField("isParsingChatClaims", value);
+  const setError = (
+    value: string | null | ((prev: string | null) => string | null),
+  ) => setField("error", value);
+  const setIsImagePreviewOpen = (
+    value: boolean | ((prev: boolean) => boolean),
+  ) => setField("isImagePreviewOpen", value);
+  const setChatScreenshots = (
+    value: File[] | ((prev: File[]) => File[]),
+  ) => setField("chatScreenshots", value);
+  const setChatClaimsContext = (
+    value: string | ((prev: string) => string),
+  ) => setField("chatClaimsContext", value);
+  const setChatClaimsPrefill = (
+    value:
+      | ChatClaimsPrefill
+      | null
+      | ((prev: ChatClaimsPrefill | null) => ChatClaimsPrefill | null),
+  ) => setField("chatClaimsPrefill", value);
+  const setChatFollowUpDraft = (
+    value:
+      | Record<string, string>
+      | ((prev: Record<string, string>) => Record<string, string>),
+  ) => setField("chatFollowUpDraft", value);
+  const setChatFollowUpHistory = (
+    value: FollowUpAnswer[] | ((prev: FollowUpAnswer[]) => FollowUpAnswer[]),
+  ) => setField("chatFollowUpHistory", value);
+  const setKeptConfidenceLevels = (
+    value:
+      | Record<ClaimConfidence, boolean>
+      | ((
+          prev: Record<ClaimConfidence, boolean>,
+        ) => Record<ClaimConfidence, boolean>),
+  ) => setField("keptConfidenceLevels", value);
+  const setAiPrefillByUnit = (
+    value:
+      | Record<string, AIPrefillDetail>
+      | ((
+          prev: Record<string, AIPrefillDetail>,
+        ) => Record<string, AIPrefillDetail>),
+  ) => setField("aiPrefillByUnit", value);
+  const setIsAiReasoningOpen = (
+    value: boolean | ((prev: boolean) => boolean),
+  ) => setField("isAiReasoningOpen", value);
+  const setLastAppliedClaimCount = (
+    value: number | ((prev: number) => number),
+  ) => setField("lastAppliedClaimCount", value);
+  const setReportHtmlPreview = (
+    value: string | null | ((prev: string | null) => string | null),
+  ) => setField("reportHtmlPreview", value);
+  const setEditingItemRowIndex = (
+    value: number | null | ((prev: number | null) => number | null),
+  ) => setField("editingItemRowIndex", value);
 
   const currentUnit = units[currentUnitIndex];
   const currentAssignedPeople = currentUnit
@@ -363,14 +449,18 @@ export default function HomePage() {
   );
 
   useEffect(() => {
-    setCurrentUnitIndex((prev) =>
-      Math.max(0, Math.min(units.length - 1, prev)),
+    dispatch(
+      setHomeField("currentUnitIndex", (prev) =>
+        Math.max(0, Math.min(units.length - 1, prev)),
+      ),
     );
   }, [units.length]);
 
   useEffect(() => {
-    setCurrentPersonIndex((prev) =>
-      Math.max(0, Math.min(people.length - 1, prev)),
+    dispatch(
+      setHomeField("currentPersonIndex", (prev) =>
+        Math.max(0, Math.min(people.length - 1, prev)),
+      ),
     );
   }, [people.length]);
 
@@ -379,18 +469,18 @@ export default function HomePage() {
       return;
     }
     if (editingItemRowIndex >= receipt.items.length) {
-      setEditingItemRowIndex(null);
+      dispatch(setHomeField("editingItemRowIndex", null));
     }
   }, [receipt, editingItemRowIndex]);
 
   useEffect(() => {
     if (!file) {
-      setSelectedImageUrl(null);
+      dispatch(setHomeField("selectedImageUrl", null));
       return;
     }
 
     const objectUrl = URL.createObjectURL(file);
-    setSelectedImageUrl(objectUrl);
+    dispatch(setHomeField("selectedImageUrl", objectUrl));
 
     return () => {
       URL.revokeObjectURL(objectUrl);
@@ -401,7 +491,7 @@ export default function HomePage() {
     const nextUrls = chatScreenshots.map((screenshot) =>
       URL.createObjectURL(screenshot),
     );
-    setChatScreenshotPreviewUrls(nextUrls);
+    dispatch(setHomeField("chatScreenshotPreviewUrls", nextUrls));
 
     return () => {
       nextUrls.forEach((url) => URL.revokeObjectURL(url));
@@ -410,17 +500,19 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!chatClaimsPrefill) {
-      setChatFollowUpDraft({});
+      dispatch(setHomeField("chatFollowUpDraft", {}));
       return;
     }
 
-    setChatFollowUpDraft((prev) => {
-      const next: Record<string, string> = {};
-      chatClaimsPrefill.followUpQuestions.forEach((question) => {
-        next[question.id] = prev[question.id] ?? "";
-      });
-      return next;
-    });
+    dispatch(
+      setHomeField("chatFollowUpDraft", (prev) => {
+        const next: Record<string, string> = {};
+        chatClaimsPrefill.followUpQuestions.forEach((question) => {
+          next[question.id] = prev[question.id] ?? "";
+        });
+        return next;
+      }),
+    );
   }, [chatClaimsPrefill]);
 
   useEffect(() => {
@@ -430,7 +522,7 @@ export default function HomePage() {
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setIsImagePreviewOpen(false);
+        dispatch(setHomeField("isImagePreviewOpen", false));
       }
     };
 
@@ -446,17 +538,22 @@ export default function HomePage() {
       typeof window === "undefined" ||
       typeof ResizeObserver === "undefined"
     ) {
-      setAssignPanelHeight(null);
+      dispatch(setHomeField("assignPanelHeight", null));
       return;
     }
 
     const desktopQuery = window.matchMedia("(min-width: 1024px)");
     const updateHeight = () => {
       if (!desktopQuery.matches) {
-        setAssignPanelHeight(null);
+        dispatch(setHomeField("assignPanelHeight", null));
         return;
       }
-      setAssignPanelHeight(assignContentPanelRef.current?.offsetHeight ?? null);
+      dispatch(
+        setHomeField(
+          "assignPanelHeight",
+          assignContentPanelRef.current?.offsetHeight ?? null,
+        ),
+      );
     };
 
     updateHeight();
@@ -475,15 +572,19 @@ export default function HomePage() {
   }, [step, assignMode, currentPersonIndex, currentUnitIndex]);
 
   function resetChatPrefillState() {
-    setChatClaimsPrefill(null);
-    setChatFollowUpDraft({});
-    setChatFollowUpHistory([]);
-    setKeptConfidenceLevels({
-      high: true,
-      medium: true,
-      low: true,
-    });
-    setLastAppliedClaimCount(0);
+    dispatch({ type: "RESET_CHAT_PREFILL" });
+  }
+
+  function clearReceiptData() {
+    dispatch({ type: "CLEAR_RECEIPT_DATA" });
+  }
+
+  function clearChatClaimInputs() {
+    dispatch({ type: "CLEAR_CHAT_CLAIM_INPUTS" });
+  }
+
+  function clearAiClaimMetadata() {
+    dispatch({ type: "CLEAR_AI_CLAIM_METADATA" });
   }
 
   function onFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -496,16 +597,9 @@ export default function HomePage() {
         (selected.name !== file.name || selected.size !== file.size));
     setFile(selected);
     if (changedFile) {
-      setReceipt(null);
-      setUnits([]);
-      setAssignments({});
-      setTaxCents(0);
-      setTipCents(0);
-      setEditingItemRowIndex(null);
-      setChatScreenshots([]);
-      setChatClaimsContext("");
-      resetChatPrefillState();
-      setAiPrefillByUnit({});
+      clearReceiptData();
+      clearChatClaimInputs();
+      clearAiClaimMetadata();
       setStep("setup");
     }
     if (!selected) {
@@ -516,16 +610,9 @@ export default function HomePage() {
 
   function removeSelectedFile() {
     setFile(null);
-    setReceipt(null);
-    setUnits([]);
-    setAssignments({});
-    setTaxCents(0);
-    setTipCents(0);
-    setEditingItemRowIndex(null);
-    setChatScreenshots([]);
-    setChatClaimsContext("");
-    resetChatPrefillState();
-    setAiPrefillByUnit({});
+    clearReceiptData();
+    clearChatClaimInputs();
+    clearAiClaimMetadata();
     setStep("setup");
     setIsImagePreviewOpen(false);
     setError(null);
@@ -555,21 +642,7 @@ export default function HomePage() {
     }
 
     try {
-      setIsParsing(true);
-      setError(null);
-      setStep("setup");
-      setReceipt(null);
-      setUnits([]);
-      setAssignments({});
-      setTaxCents(0);
-      setTipCents(0);
-      setEditingItemRowIndex(null);
-      resetChatPrefillState();
-      setAiPrefillByUnit({});
-      setChatClaimsContext("");
-      setCurrentUnitIndex(0);
-      setCurrentPersonIndex(0);
-      setAssignMode("byItem");
+      dispatch({ type: "RECEIPT_PARSE_STARTED" });
 
       const formData = new FormData();
       formData.append("receipt", file);
@@ -587,14 +660,16 @@ export default function HomePage() {
       const parsed = payload.receipt as ParsedReceipt;
       const expanded = expandItemsToUnits(parsed);
 
-      setReceipt(parsed);
-      setUnits(expanded);
-      setTaxCents(parsed.taxCents);
-      setTipCents(parsed.tipCents);
+      dispatch({
+        type: "RECEIPT_PARSE_SUCCEEDED",
+        receipt: parsed,
+        units: expanded,
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to parse receipt.");
-    } finally {
-      setIsParsing(false);
+      dispatch({
+        type: "RECEIPT_PARSE_FAILED",
+        error: err instanceof Error ? err.message : "Failed to parse receipt.",
+      });
     }
   }
 
@@ -945,14 +1020,6 @@ export default function HomePage() {
     );
   }
 
-  function toCents(value: string): number {
-    const numeric = Number(value);
-    if (!Number.isFinite(numeric) || numeric < 0) {
-      return 0;
-    }
-    return Math.round(numeric * 100);
-  }
-
   function updateReceiptItem(
     rowIndex: number,
     updates: Partial<ParsedReceipt["items"][number]>,
@@ -1088,100 +1155,116 @@ export default function HomePage() {
         )}
         {step === "setup" && (
           <SetupStep
-            file={file}
-            selectedImageUrl={selectedImageUrl}
-            isParsing={isParsing}
-            people={people}
-            newPerson={newPerson}
-            receipt={receipt}
-            units={units}
-            overallSubtotal={overallSubtotal}
-            taxCents={taxCents}
-            tipCents={tipCents}
-            editingItemRowIndex={editingItemRowIndex}
-            fileInputRef={fileInputRef}
-            newPersonInputRef={newPersonInputRef}
-            onFileChange={onFileChange}
-            removeSelectedFile={removeSelectedFile}
-            parseReceipt={parseReceipt}
-            onAddPersonSubmit={onAddPersonSubmit}
-            setNewPerson={setNewPerson}
-            removePerson={removePerson}
-            toCents={toCents}
-            setTaxCents={setTaxCents}
-            setTipCents={setTipCents}
-            updateReceiptItem={updateReceiptItem}
-            setEditingItemRowIndex={setEditingItemRowIndex}
-            openImagePreview={() => setIsImagePreviewOpen(true)}
+            state={{
+              file,
+              selectedImageUrl,
+              isParsing,
+              people,
+              newPerson,
+              receipt,
+              units,
+              overallSubtotal,
+              taxCents,
+              tipCents,
+              editingItemRowIndex,
+            }}
+            refs={{
+              fileInputRef,
+              newPersonInputRef,
+            }}
+            actions={{
+              onFileChange,
+              removeSelectedFile,
+              parseReceipt,
+              onAddPersonSubmit,
+              setNewPerson,
+              removePerson,
+              setTaxCents,
+              setTipCents,
+              updateReceiptItem,
+              setEditingItemRowIndex,
+              openImagePreview: () => setIsImagePreviewOpen(true),
+            }}
             goToClaims={() => setStep("claims")}
           />
         )}
         {step === "claims" && (
           <ClaimsStep
-            receiptReady={!!receipt && units.length > 0}
-            peopleCount={people.length}
-            units={units}
-            chatScreenshots={chatScreenshots}
-            chatScreenshotPreviewUrls={chatScreenshotPreviewUrls}
-            chatClaimsContext={chatClaimsContext}
-            isParsingChatClaims={isParsingChatClaims}
-            chatClaimsPrefill={chatClaimsPrefill}
-            assignmentSuggestions={assignmentSuggestions}
-            filteredAssignmentSuggestions={filteredAssignmentSuggestions}
-            missingContextAssignments={missingContextAssignments}
-            keptConfidenceLevels={keptConfidenceLevels}
-            chatFollowUpDraft={chatFollowUpDraft}
-            lastAppliedClaimCount={lastAppliedClaimCount}
-            goToSetup={() => setStep("setup")}
-            goToAssign={() => setStep("assign")}
-            onChatScreenshotsChange={onChatScreenshotsChange}
-            setChatClaimsContext={setChatClaimsContext}
-            removeChatScreenshot={removeChatScreenshot}
-            parseChatClaims={() => parseChatClaims()}
-            toggleConfidenceLevel={toggleConfidenceLevel}
-            setChatFollowUpDraft={setChatFollowUpDraft}
-            submitFollowUpAnswers={submitFollowUpAnswers}
-            applyChatClaimPrefill={applyChatClaimPrefill}
+            state={{
+              receiptReady: !!receipt && units.length > 0,
+              peopleCount: people.length,
+              units,
+              chatScreenshots,
+              chatScreenshotPreviewUrls,
+              chatClaimsContext,
+              isParsingChatClaims,
+              chatClaimsPrefill,
+              assignmentSuggestions,
+              filteredAssignmentSuggestions,
+              missingContextAssignments,
+              keptConfidenceLevels,
+              chatFollowUpDraft,
+              lastAppliedClaimCount,
+            }}
+            actions={{
+              onChatScreenshotsChange,
+              setChatClaimsContext,
+              removeChatScreenshot,
+              parseChatClaims: () => parseChatClaims(),
+              toggleConfidenceLevel,
+              setChatFollowUpDraft,
+              submitFollowUpAnswers,
+              applyChatClaimPrefill,
+            }}
+            navigation={{
+              goToSetup: () => setStep("setup"),
+              goToAssign: () => setStep("assign"),
+            }}
           />
         )}
         {step === "assign" && (
           <AssignStep
-            receipt={receipt}
-            units={units}
-            people={people}
-            assignments={assignments}
-            assignMode={assignMode}
-            setAssignMode={setAssignMode}
-            currentUnitIndex={currentUnitIndex}
-            setCurrentUnitIndex={setCurrentUnitIndex}
-            currentPersonIndex={currentPersonIndex}
-            setCurrentPersonIndex={setCurrentPersonIndex}
-            currentUnit={currentUnit}
-            currentPerson={currentPerson}
-            currentAssignedPeople={currentAssignedPeople}
-            currentSourceRowIndex={currentSourceRowIndex}
-            currentSourceItem={currentSourceItem}
-            currentUnitAIPrefill={currentUnitAIPrefill}
-            currentPersonAIPrefills={currentPersonAIPrefills}
-            editingItemRowIndex={editingItemRowIndex}
-            setEditingItemRowIndex={setEditingItemRowIndex}
-            updateReceiptItem={updateReceiptItem}
-            toCents={toCents}
-            togglePersonForCurrentUnit={togglePersonForCurrentUnit}
-            selectAllForCurrentUnit={selectAllForCurrentUnit}
-            clearForCurrentUnit={clearForCurrentUnit}
-            toggleCurrentPersonForUnit={toggleCurrentPersonForUnit}
-            jumpToItemRow={jumpToItemRow}
-            selectAllItemsForCurrentPerson={selectAllItemsForCurrentPerson}
-            clearAllItemsForCurrentPerson={clearAllItemsForCurrentPerson}
-            moveCurrentUnit={moveCurrentUnit}
-            moveCurrentPerson={moveCurrentPerson}
-            allItemsAssigned={allItemsAssigned}
-            assignPanelHeight={assignPanelHeight}
+            state={{
+              receipt,
+              units,
+              people,
+              assignments,
+              assignMode,
+              currentUnitIndex,
+              currentPersonIndex,
+              currentUnit,
+              currentPerson,
+              currentAssignedPeople,
+              currentSourceRowIndex,
+              currentSourceItem,
+              currentUnitAIPrefill,
+              currentPersonAIPrefills,
+              editingItemRowIndex,
+              allItemsAssigned,
+              assignPanelHeight,
+            }}
+            actions={{
+              setAssignMode,
+              setCurrentUnitIndex,
+              setCurrentPersonIndex,
+              setEditingItemRowIndex,
+              updateReceiptItem,
+              togglePersonForCurrentUnit,
+              selectAllForCurrentUnit,
+              clearForCurrentUnit,
+              toggleCurrentPersonForUnit,
+              jumpToItemRow,
+              selectAllItemsForCurrentPerson,
+              clearAllItemsForCurrentPerson,
+              moveCurrentUnit,
+              moveCurrentPerson,
+              openAiReasoning: () => setIsAiReasoningOpen(true),
+            }}
+            navigation={{
+              goToSetup: () => setStep("setup"),
+              goToResults: () => setStep("results"),
+            }}
             assignContentPanelRef={assignContentPanelRef}
-            openAiReasoning={() => setIsAiReasoningOpen(true)}
-            goToSetup={() => setStep("setup")}
-            goToResults={() => setStep("results")}
           />
         )}
         {step === "results" && (
