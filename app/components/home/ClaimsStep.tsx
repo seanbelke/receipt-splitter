@@ -26,6 +26,9 @@ type ClaimsStepState = {
   chatScreenshots: File[];
   chatScreenshotPreviewUrls: string[];
   chatClaimsContext: string;
+  isVoiceContextSupported: boolean;
+  isVoiceContextListening: boolean;
+  voiceContextError: string | null;
   isParsingChatClaims: boolean;
   chatClaimsPrefill: ChatClaimsPrefill | null;
   assignmentSuggestions: Suggestion[];
@@ -40,6 +43,8 @@ type ClaimsStepActions = {
   onChatScreenshotsChange: (event: ChangeEvent<HTMLInputElement>) => void;
   setChatClaimsContext: (value: string) => void;
   removeChatScreenshot: (index: number) => void;
+  startVoiceContextInput: () => void;
+  stopVoiceContextInput: () => void;
   parseChatClaims: () => Promise<void>;
   toggleConfidenceLevel: (level: ClaimConfidence) => void;
   setChatFollowUpDraft: (updater: (prev: Record<string, string>) => Record<string, string>) => void;
@@ -67,6 +72,9 @@ export function ClaimsStep(props: ClaimsStepProps) {
     chatScreenshots,
     chatScreenshotPreviewUrls,
     chatClaimsContext,
+    isVoiceContextSupported,
+    isVoiceContextListening,
+    voiceContextError,
     isParsingChatClaims,
     chatClaimsPrefill,
     assignmentSuggestions,
@@ -80,6 +88,8 @@ export function ClaimsStep(props: ClaimsStepProps) {
     onChatScreenshotsChange,
     setChatClaimsContext,
     removeChatScreenshot,
+    startVoiceContextInput,
+    stopVoiceContextInput,
     parseChatClaims,
     toggleConfidenceLevel,
     setChatFollowUpDraft,
@@ -181,6 +191,26 @@ export function ClaimsStep(props: ClaimsStepProps) {
         <p className="text-xs text-slate-500">
           Use this to clarify identities, nicknames, or extra item claims not obvious from screenshots.
         </p>
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <Button
+            type="button"
+            onClick={isVoiceContextListening ? stopVoiceContextInput : startVoiceContextInput}
+            disabled={!isVoiceContextSupported}
+            className={`px-3 py-1 text-xs font-semibold ${
+              isVoiceContextListening ? "primary-btn" : "secondary-btn"
+            } disabled:cursor-not-allowed disabled:opacity-40`}
+          >
+            {isVoiceContextListening ? "Stop microphone" : "Use microphone (Chrome)"}
+          </Button>
+          <p className="text-xs text-slate-500">
+            {isVoiceContextSupported
+              ? isVoiceContextListening
+                ? "Listening now. Speech is converted into editable text."
+                : "Tap to dictate extra context."
+              : "Voice input is unavailable in this browser."}
+          </p>
+        </div>
+        {voiceContextError && <p className="text-xs text-amber-700">{voiceContextError}</p>}
       </label>
 
       {chatScreenshots.length > 0 && (
