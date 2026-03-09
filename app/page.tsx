@@ -766,7 +766,7 @@ export default function HomePage() {
     clearVoiceInactivityTimeout();
     voiceInactivityTimeoutRef.current = window.setTimeout(() => {
       chatContextRecognitionRef.current?.stop();
-    }, 3000);
+    }, 1800);
   }
 
   function finalizeVoiceSession() {
