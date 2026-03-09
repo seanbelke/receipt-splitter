@@ -9,10 +9,11 @@ function stepIndex(step: Step): number {
 
 type ProgressHeaderProps = {
   step: Step;
+  maxUnlockedStep: Step;
   setStep: (step: Step) => void;
 };
 
-export function ProgressHeader({ step, setStep }: ProgressHeaderProps) {
+export function ProgressHeader({ step, maxUnlockedStep, setStep }: ProgressHeaderProps) {
   return (
     <Stack spacing={3} sx={{ mb: 4 }}>
       <Typography className="mono" variant="overline" color="text.secondary" sx={{ letterSpacing: "0.18em" }}>
@@ -25,7 +26,7 @@ export function ProgressHeader({ step, setStep }: ProgressHeaderProps) {
         {STEP_ORDER.map((stepName) => {
           const isCurrent = stepName === step;
           const isDone = stepIndex(stepName) < stepIndex(step);
-          const canGoToStep = isDone;
+          const canGoToStep = stepIndex(stepName) <= stepIndex(maxUnlockedStep);
           return (
             <Chip
               key={stepName}
