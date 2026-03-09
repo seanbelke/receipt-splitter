@@ -255,10 +255,15 @@ function normalizeDictationTranscript(transcript: string): string {
     .replace(/[ \t]{2,}/g, " ");
 }
 
+function stepIndex(step: Step): number {
+  return { setup: 1, claims: 2, assign: 3, results: 4 }[step];
+}
+
 export default function HomePage() {
   const [state, dispatch] = useReducer(homeReducer, initialHomeState);
   const {
     step,
+    maxUnlockedStep,
     file,
     receipt,
     units,
@@ -305,6 +310,9 @@ export default function HomePage() {
 
   const setStep = (value: Step | ((prev: Step) => Step)) =>
     setField("step", value);
+  const setMaxUnlockedStep = (
+    value: Step | ((prev: Step) => Step),
+  ) => setField("maxUnlockedStep", value);
   const setFile = (value: File | null | ((prev: File | null) => File | null)) =>
     setField("file", value);
   const setReceipt = (
@@ -402,6 +410,16 @@ export default function HomePage() {
   const setVoiceContextError = (
     value: string | null | ((prev: string | null) => string | null),
   ) => setField("voiceContextError", value);
+
+  function unlockStep(stepToUnlock: Step) {
+    setMaxUnlockedStep((previousMax) =>
+      stepIndex(stepToUnlock) > stepIndex(previousMax) ? stepToUnlock : previousMax,
+    );
+  }
+
+  function invalidateForwardPills(atStep: Step) {
+    setMaxUnlockedStep(atStep);
+  }
 
   const currentUnit = units[currentUnitIndex];
   const currentAssignedPeople = currentUnit
@@ -685,6 +703,7 @@ export default function HomePage() {
       clearReceiptData();
       clearChatClaimInputs();
       clearAiClaimMetadata();
+      invalidateForwardPills("setup");
       setStep("setup");
     }
     if (!selected) {
@@ -698,6 +717,7 @@ export default function HomePage() {
     clearReceiptData();
     clearChatClaimInputs();
     clearAiClaimMetadata();
+    invalidateForwardPills("setup");
     setStep("setup");
     setIsImagePreviewOpen(false);
     setError(null);
@@ -712,12 +732,14 @@ export default function HomePage() {
     );
     setChatScreenshots(files);
     resetChatPrefillState();
+    invalidateForwardPills("claims");
     setError(null);
   }
 
   function removeChatScreenshot(index: number) {
     setChatScreenshots((prev) => prev.filter((_, fileIndex) => fileIndex !== index));
     resetChatPrefillState();
+    invalidateForwardPills("claims");
   }
 
   function appendVoiceTranscript(transcript: string) {
@@ -1081,6 +1103,7 @@ export default function HomePage() {
       ...prev,
       ...nextAiPrefillByUnit,
     }));
+    invalidateForwardPills("claims");
     setLastAppliedClaimCount(appliedCount);
     setError(null);
   }
@@ -1121,6 +1144,7 @@ export default function HomePage() {
     }
 
     setPeople((prev) => [...prev, trimmed]);
+    invalidateForwardPills("setup");
     resetChatPrefillState();
     setIsAiReasoningOpen(false);
     setNewPerson("");
@@ -1135,6 +1159,7 @@ export default function HomePage() {
 
   function removePerson(name: string) {
     setPeople((prev) => prev.filter((person) => person !== name));
+    invalidateForwardPills("setup");
     resetChatPrefillState();
     setAiPrefillByUnit((prev) => {
       const next: Record<string, AIPrefillDetail> = {};
@@ -1158,6 +1183,7 @@ export default function HomePage() {
   }
 
   function toggleAssignmentForUnit(unitId: string, name: string) {
+    invalidateForwardPills("assign");
     setAssignments((prev) => {
       const selected = prev[unitId] ?? [];
       const exists = selected.includes(name);
@@ -1171,6 +1197,7 @@ export default function HomePage() {
   }
 
   function setAllPeopleForUnit(unitId: string) {
+    invalidateForwardPills("assign");
     setAssignments((prev) => ({
       ...prev,
       [unitId]: [...people],
@@ -1178,6 +1205,7 @@ export default function HomePage() {
   }
 
   function clearAllPeopleForUnit(unitId: string) {
+    invalidateForwardPills("assign");
     setAssignments((prev) => ({
       ...prev,
       [unitId]: [],
@@ -1217,6 +1245,7 @@ export default function HomePage() {
       return;
     }
 
+    invalidateForwardPills("assign");
     setAssignments((prev) => {
       const next = { ...prev };
       units.forEach((unit) => {
@@ -1234,6 +1263,7 @@ export default function HomePage() {
       return;
     }
 
+    invalidateForwardPills("assign");
     setAssignments((prev) => {
       const next = { ...prev };
       units.forEach((unit) => {
@@ -1271,6 +1301,7 @@ export default function HomePage() {
       );
       const nextReceipt = { ...prev, items: nextItems };
       const nextUnits = expandItemsToUnits(nextReceipt);
+      invalidateForwardPills(step);
       setUnits(nextUnits);
       resetChatPrefillState();
       setAiPrefillByUnit((prevPrefill) => {
@@ -1382,7 +1413,11 @@ export default function HomePage() {
 
   return (
     <Container maxWidth="lg" sx={{ minHeight: "100vh", py: { xs: 4, sm: 6 } }}>
-      <ProgressHeader step={step} setStep={setStep} />
+      <ProgressHeader
+        step={step}
+        maxUnlockedStep={maxUnlockedStep}
+        setStep={setStep}
+      />
 
       <Paper className="surface-panel" sx={{ borderRadius: 4, p: { xs: 3, sm: 4 } }}>
         {error && (
@@ -1416,13 +1451,22 @@ export default function HomePage() {
               onAddPersonSubmit,
               setNewPerson,
               removePerson,
-              setTaxCents,
-              setTipCents,
+              setTaxCents: (value) => {
+                invalidateForwardPills("setup");
+                setTaxCents(value);
+              },
+              setTipCents: (value) => {
+                invalidateForwardPills("setup");
+                setTipCents(value);
+              },
               updateReceiptItem,
               setEditingItemRowIndex,
               openImagePreview: () => setIsImagePreviewOpen(true),
             }}
-            goToClaims={() => setStep("claims")}
+            goToClaims={() => {
+              unlockStep("claims");
+              setStep("claims");
+            }}
           />
         )}
         {step === "claims" && (
@@ -1460,7 +1504,10 @@ export default function HomePage() {
             }}
             navigation={{
               goToSetup: () => setStep("setup"),
-              goToAssign: () => setStep("assign"),
+              goToAssign: () => {
+                unlockStep("assign");
+                setStep("assign");
+              },
             }}
           />
         )}
@@ -1504,7 +1551,10 @@ export default function HomePage() {
             }}
             navigation={{
               goToSetup: () => setStep("setup"),
-              goToResults: () => setStep("results"),
+              goToResults: () => {
+                unlockStep("results");
+                setStep("results");
+              },
             }}
             assignContentPanelRef={assignContentPanelRef}
           />

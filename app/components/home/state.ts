@@ -17,6 +17,7 @@ function defaultConfidenceLevels(): Record<ClaimConfidence, boolean> {
 
 export type HomeState = {
   step: Step;
+  maxUnlockedStep: Step;
   file: File | null;
   receipt: ParsedReceipt | null;
   units: AssignableUnit[];
@@ -53,6 +54,7 @@ export type HomeState = {
 
 export const initialHomeState: HomeState = {
   step: "setup",
+  maxUnlockedStep: "setup",
   file: null,
   receipt: null,
   units: [],
@@ -161,6 +163,7 @@ function withResetChatPrefill(state: HomeState): HomeState {
 function withClearReceiptData(state: HomeState): HomeState {
   return {
     ...state,
+    maxUnlockedStep: "setup",
     receipt: null,
     units: [],
     assignments: {},
@@ -203,6 +206,7 @@ export function homeReducer(state: HomeState, action: HomeAction): HomeState {
         isParsing: true,
         error: null,
         step: "setup",
+        maxUnlockedStep: "setup",
         chatClaimsContext: "",
         currentUnitIndex: 0,
         currentPersonIndex: 0,
