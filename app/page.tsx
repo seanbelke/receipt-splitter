@@ -16,6 +16,7 @@ import {
   expandItemsToUnits,
   moneyFromCents,
 } from "@/lib/split";
+import punctuate from "punctuation-name2symbol";
 import {
   AssignableUnit,
   ChatClaimsPrefill,
@@ -44,6 +45,38 @@ import {
   initialHomeState,
   setHomeField,
 } from "@/app/components/home/state";
+
+type BrowserSpeechRecognitionResult = {
+  isFinal: boolean;
+  0: {
+    transcript: string;
+  };
+};
+
+type BrowserSpeechRecognitionEvent = {
+  resultIndex: number;
+  results: BrowserSpeechRecognitionResult[];
+};
+
+type BrowserSpeechRecognition = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: BrowserSpeechRecognitionEvent) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
+
+declare global {
+  interface Window {
+    webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor;
+    SpeechRecognition?: BrowserSpeechRecognitionConstructor;
+  }
+}
 
 function escapeHtml(value: string): string {
   return value
@@ -207,6 +240,21 @@ function buildHtmlReport(params: {
 </html>`;
 }
 
+function normalizeDictationTranscript(transcript: string): string {
+  const withLineBreaks = transcript
+    .replace(/\bnew paragraph\b/gi, "\n\n")
+    .replace(/\bnew line\b/gi, "\n");
+  const punctuated = punctuate({
+    text: withLineBreaks,
+    capitalize: false,
+  });
+
+  return punctuated
+    .replace(/[ \t]+([,.;:!?])/g, "$1")
+    .replace(/([,.;:!?])([A-Za-z])/g, "$1 $2")
+    .replace(/[ \t]{2,}/g, " ");
+}
+
 export default function HomePage() {
   const [state, dispatch] = useReducer(homeReducer, initialHomeState);
   const {
@@ -244,6 +292,9 @@ export default function HomePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const newPersonInputRef = useRef<HTMLInputElement>(null);
   const assignContentPanelRef = useRef<HTMLDivElement>(null);
+  const chatContextRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const voiceSessionEndedRef = useRef(false);
+  const voiceInactivityTimeoutRef = useRef<number | null>(null);
 
   function setField<K extends keyof HomeState>(
     key: K,
@@ -342,6 +393,15 @@ export default function HomePage() {
   const setEditingItemRowIndex = (
     value: number | null | ((prev: number | null) => number | null),
   ) => setField("editingItemRowIndex", value);
+  const setIsVoiceContextSupported = (
+    value: boolean | ((prev: boolean) => boolean),
+  ) => setField("isVoiceContextSupported", value);
+  const setIsVoiceContextListening = (
+    value: boolean | ((prev: boolean) => boolean),
+  ) => setField("isVoiceContextListening", value);
+  const setVoiceContextError = (
+    value: string | null | ((prev: string | null) => string | null),
+  ) => setField("voiceContextError", value);
 
   const currentUnit = units[currentUnitIndex];
   const currentAssignedPeople = currentUnit
@@ -516,6 +576,30 @@ export default function HomePage() {
   }, [chatClaimsPrefill]);
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const constructor =
+      window.SpeechRecognition ?? window.webkitSpeechRecognition;
+    dispatch(setHomeField("isVoiceContextSupported", Boolean(constructor)));
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (step === "claims") {
+      return;
+    }
+    chatContextRecognitionRef.current?.stop();
+  }, [step]);
+
+  useEffect(() => {
+    return () => {
+      chatContextRecognitionRef.current?.stop();
+      clearVoiceInactivityTimeout();
+    };
+  }, []);
+
+  useEffect(() => {
     if (!isImagePreviewOpen) {
       return;
     }
@@ -580,6 +664,7 @@ export default function HomePage() {
   }
 
   function clearChatClaimInputs() {
+    chatContextRecognitionRef.current?.stop();
     dispatch({ type: "CLEAR_CHAT_CLAIM_INPUTS" });
   }
 
@@ -633,6 +718,158 @@ export default function HomePage() {
   function removeChatScreenshot(index: number) {
     setChatScreenshots((prev) => prev.filter((_, fileIndex) => fileIndex !== index));
     resetChatPrefillState();
+  }
+
+  function appendVoiceTranscript(transcript: string) {
+    const cleaned = normalizeDictationTranscript(transcript).trim();
+    if (cleaned.length === 0) {
+      return;
+    }
+    setChatClaimsContext((prev) =>
+      prev.trim().length === 0
+        ? cleaned
+        : `${prev}${/[\s\n]$/.test(prev) ? "" : " "}${cleaned}`,
+    );
+  }
+
+  function playMicPing(kind: "start" | "stop") {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      const AudioContextCtor = window.AudioContext;
+      if (!AudioContextCtor) {
+        return;
+      }
+
+      const context = new AudioContextCtor();
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      const now = context.currentTime;
+
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(kind === "start" ? 1180 : 780, now);
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.12, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.11);
+
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(now);
+      oscillator.stop(now + 0.12);
+      oscillator.onended = () => {
+        void context.close();
+      };
+    } catch {
+      // Best effort only; skip sound if audio context fails.
+    }
+  }
+
+  function clearVoiceInactivityTimeout() {
+    if (voiceInactivityTimeoutRef.current === null || typeof window === "undefined") {
+      return;
+    }
+    window.clearTimeout(voiceInactivityTimeoutRef.current);
+    voiceInactivityTimeoutRef.current = null;
+  }
+
+  function resetVoiceInactivityTimeout() {
+    if (typeof window === "undefined") {
+      return;
+    }
+    clearVoiceInactivityTimeout();
+    voiceInactivityTimeoutRef.current = window.setTimeout(() => {
+      chatContextRecognitionRef.current?.stop();
+    }, 1800);
+  }
+
+  function finalizeVoiceSession() {
+    if (voiceSessionEndedRef.current) {
+      return;
+    }
+    voiceSessionEndedRef.current = true;
+    clearVoiceInactivityTimeout();
+    setIsVoiceContextListening(false);
+    playMicPing("stop");
+  }
+
+  function ensureChatContextRecognition(): BrowserSpeechRecognition | null {
+    if (chatContextRecognitionRef.current) {
+      return chatContextRecognitionRef.current;
+    }
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    const constructor =
+      window.SpeechRecognition ?? window.webkitSpeechRecognition;
+    if (!constructor) {
+      return null;
+    }
+
+    const recognition = new constructor();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+    recognition.onresult = (event) => {
+      let finalTranscript = "";
+      resetVoiceInactivityTimeout();
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const result = event.results[i];
+        if (!result.isFinal) {
+          continue;
+        }
+        finalTranscript += result[0]?.transcript ?? "";
+      }
+      appendVoiceTranscript(finalTranscript);
+    };
+    recognition.onerror = (event) => {
+      const friendlyError =
+        event.error === "not-allowed"
+          ? "Microphone permission was denied."
+          : event.error === "no-speech"
+            ? "No speech was detected. Try again."
+            : `Voice input failed (${event.error}).`;
+      setVoiceContextError(friendlyError);
+      finalizeVoiceSession();
+    };
+    recognition.onend = () => {
+      finalizeVoiceSession();
+    };
+
+    chatContextRecognitionRef.current = recognition;
+    return recognition;
+  }
+
+
+  function startVoiceContextInput() {
+    const recognition = ensureChatContextRecognition();
+    if (!recognition) {
+      setVoiceContextError("Voice input is only available in supported Chrome browsers.");
+      setIsVoiceContextSupported(false);
+      return;
+    }
+
+    setVoiceContextError(null);
+    try {
+      voiceSessionEndedRef.current = false;
+      recognition.start();
+      setIsVoiceContextListening(true);
+      playMicPing("start");
+      resetVoiceInactivityTimeout();
+    } catch {
+      setVoiceContextError("Unable to start microphone capture.");
+      voiceSessionEndedRef.current = true;
+      clearVoiceInactivityTimeout();
+      setIsVoiceContextListening(false);
+    }
+  }
+
+  function stopVoiceContextInput() {
+    chatContextRecognitionRef.current?.stop();
+    finalizeVoiceSession();
   }
 
   async function startReceiptParse() {
@@ -1197,6 +1434,9 @@ export default function HomePage() {
               chatScreenshots,
               chatScreenshotPreviewUrls,
               chatClaimsContext,
+              isVoiceContextSupported: state.isVoiceContextSupported,
+              isVoiceContextListening: state.isVoiceContextListening,
+              voiceContextError: state.voiceContextError,
               isParsingChatClaims,
               chatClaimsPrefill,
               assignmentSuggestions,
@@ -1210,6 +1450,8 @@ export default function HomePage() {
               onChatScreenshotsChange,
               setChatClaimsContext,
               removeChatScreenshot,
+              startVoiceContextInput,
+              stopVoiceContextInput,
               parseChatClaims: () => parseChatClaims(),
               toggleConfidenceLevel,
               setChatFollowUpDraft,

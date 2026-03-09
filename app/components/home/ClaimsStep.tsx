@@ -4,7 +4,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import { ChangeEvent } from "react";
 import { AssignableUnit, ChatClaimsPrefill, ClaimConfidence } from "@/lib/types";
 import { moneyFromCents } from "@/lib/split";
-import { AssignIcon, ChatIcon, TrashIcon, UploadIcon } from "./icons";
+import { AssignIcon, ChatIcon, MicIcon, TrashIcon, UploadIcon } from "./icons";
 
 type Suggestion = {
   unitId: string;
@@ -26,6 +26,9 @@ type ClaimsStepState = {
   chatScreenshots: File[];
   chatScreenshotPreviewUrls: string[];
   chatClaimsContext: string;
+  isVoiceContextSupported: boolean;
+  isVoiceContextListening: boolean;
+  voiceContextError: string | null;
   isParsingChatClaims: boolean;
   chatClaimsPrefill: ChatClaimsPrefill | null;
   assignmentSuggestions: Suggestion[];
@@ -40,6 +43,8 @@ type ClaimsStepActions = {
   onChatScreenshotsChange: (event: ChangeEvent<HTMLInputElement>) => void;
   setChatClaimsContext: (value: string) => void;
   removeChatScreenshot: (index: number) => void;
+  startVoiceContextInput: () => void;
+  stopVoiceContextInput: () => void;
   parseChatClaims: () => Promise<void>;
   toggleConfidenceLevel: (level: ClaimConfidence) => void;
   setChatFollowUpDraft: (updater: (prev: Record<string, string>) => Record<string, string>) => void;
@@ -67,6 +72,9 @@ export function ClaimsStep(props: ClaimsStepProps) {
     chatScreenshots,
     chatScreenshotPreviewUrls,
     chatClaimsContext,
+    isVoiceContextSupported,
+    isVoiceContextListening,
+    voiceContextError,
     isParsingChatClaims,
     chatClaimsPrefill,
     assignmentSuggestions,
@@ -80,6 +88,8 @@ export function ClaimsStep(props: ClaimsStepProps) {
     onChatScreenshotsChange,
     setChatClaimsContext,
     removeChatScreenshot,
+    startVoiceContextInput,
+    stopVoiceContextInput,
     parseChatClaims,
     toggleConfidenceLevel,
     setChatFollowUpDraft,
@@ -171,16 +181,40 @@ export function ClaimsStep(props: ClaimsStepProps) {
 
       <label className="block space-y-2">
         <span className="text-sm font-medium text-slate-700">Extra context for the AI (optional)</span>
-        <textarea
-          value={chatClaimsContext}
-          onChange={(event) => setChatClaimsContext(event.target.value)}
-          rows={4}
-          placeholder={`Examples:\n- I am [name]\n- '[nickname]' is [full name]\n- [name] got [item]`}
-          className="input-field min-h-28 resize-y"
-        />
+        <div className="relative">
+          <textarea
+            value={chatClaimsContext}
+            onChange={(event) => setChatClaimsContext(event.target.value)}
+            rows={4}
+            placeholder={`Examples:\n- I am [name]\n- '[nickname]' is [full name]\n- [name] got [item]`}
+            className="input-field min-h-28 resize-y pb-14 pr-14"
+          />
+          <button
+            type="button"
+            onClick={isVoiceContextListening ? stopVoiceContextInput : startVoiceContextInput}
+            disabled={!isVoiceContextSupported}
+            aria-label={isVoiceContextListening ? "Stop microphone input" : "Start microphone input"}
+            title={isVoiceContextListening ? "Stop microphone" : "Use microphone"}
+            className={`absolute bottom-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full border transition ${
+              isVoiceContextListening
+                ? "animate-pulse border-rose-400 bg-rose-500 text-white"
+                : "border-slate-300 bg-white text-slate-600 hover:border-slate-400 hover:text-slate-800"
+            } disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400`}
+          >
+            <MicIcon className="h-4 w-4" />
+          </button>
+        </div>
         <p className="text-xs text-slate-500">
           Use this to clarify identities, nicknames, or extra item claims not obvious from screenshots.
         </p>
+        <p className="text-xs text-slate-500">
+          {isVoiceContextSupported
+            ? isVoiceContextListening
+              ? "Listening now. Tap the mic again to stop."
+              : "Tap the mic in the text box to dictate."
+            : "Voice input is unavailable in this browser."}
+        </p>
+        {voiceContextError && <p className="text-xs text-amber-700">{voiceContextError}</p>}
       </label>
 
       {chatScreenshots.length > 0 && (

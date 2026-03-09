@@ -35,6 +35,9 @@ export type HomeState = {
   isImagePreviewOpen: boolean;
   chatScreenshots: File[];
   chatClaimsContext: string;
+  isVoiceContextSupported: boolean;
+  isVoiceContextListening: boolean;
+  voiceContextError: string | null;
   chatScreenshotPreviewUrls: string[];
   chatClaimsPrefill: ChatClaimsPrefill | null;
   chatFollowUpDraft: Record<string, string>;
@@ -68,6 +71,9 @@ export const initialHomeState: HomeState = {
   isImagePreviewOpen: false,
   chatScreenshots: [],
   chatClaimsContext: "",
+  isVoiceContextSupported: false,
+  isVoiceContextListening: false,
+  voiceContextError: null,
   chatScreenshotPreviewUrls: [],
   chatClaimsPrefill: null,
   chatFollowUpDraft: {},
@@ -169,6 +175,8 @@ function withClearChatClaimInputs(state: HomeState): HomeState {
     ...state,
     chatScreenshots: [],
     chatClaimsContext: "",
+    isVoiceContextListening: false,
+    voiceContextError: null,
   };
 }
 

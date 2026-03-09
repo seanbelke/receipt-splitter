@@ -68,3 +68,13 @@ export function CheckIcon({ className = "h-4 w-4" }: IconProps) {
     </svg>
   );
 }
+
+export function MicIcon({ className = "h-4 w-4" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+      <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M12 15a3 3 0 0 0 3-3V7a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Z" />
+      <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M19 11.5a7 7 0 0 1-14 0M12 18.5V22" />
+      <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M9.5 22h5" />
+    </svg>
+  );
+}

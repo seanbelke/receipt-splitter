@@ -17,6 +17,7 @@
     "@mui/material-nextjs": "^7.3.8",
     "next": "^15.5.12",
     "openai": "^4.77.0",
+    "punctuation-name2symbol": "^1.1.0",
     "react": "19.0.0",
     "react-dom": "19.0.0"
   },
