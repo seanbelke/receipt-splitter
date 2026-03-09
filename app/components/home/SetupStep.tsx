@@ -6,7 +6,7 @@ import { ChangeEvent, FormEvent, RefObject } from "react";
 import { AssignableUnit, ParsedReceipt } from "@/lib/types";
 import { toCents } from "@/lib/currency";
 import { moneyFromCents } from "@/lib/split";
-import { ChatIcon, CheckIcon, EditIcon, MicIcon, TrashIcon, UploadIcon, UsersIcon } from "./icons";
+import { ChatIcon, CheckIcon, EditIcon, TrashIcon, UploadIcon, UsersIcon } from "./icons";
 
 type SetupStepState = {
   file: File | null;
@@ -20,10 +20,6 @@ type SetupStepState = {
   taxCents: number;
   tipCents: number;
   editingItemRowIndex: number | null;
-  voiceTestText: string;
-  isVoiceTestSupported: boolean;
-  isVoiceTestListening: boolean;
-  voiceTestError: string | null;
 };
 
 type SetupStepRefs = {
@@ -42,9 +38,6 @@ type SetupStepActions = {
   setTipCents: (value: number) => void;
   updateReceiptItem: (rowIndex: number, updates: Partial<ParsedReceipt["items"][number]>) => void;
   setEditingItemRowIndex: (index: number | null) => void;
-  setVoiceTestText: (value: string) => void;
-  startVoiceTestInput: () => void;
-  stopVoiceTestInput: () => void;
   openImagePreview: () => void;
 };
 
@@ -69,10 +62,6 @@ export function SetupStep(props: SetupStepProps) {
     taxCents,
     tipCents,
     editingItemRowIndex,
-    voiceTestText,
-    isVoiceTestSupported,
-    isVoiceTestListening,
-    voiceTestError,
   } = state;
   const { fileInputRef, newPersonInputRef } = refs;
   const {
@@ -86,9 +75,6 @@ export function SetupStep(props: SetupStepProps) {
     setTipCents,
     updateReceiptItem,
     setEditingItemRowIndex,
-    setVoiceTestText,
-    startVoiceTestInput,
-    stopVoiceTestInput,
     openImagePreview,
   } = actions;
 
@@ -199,48 +185,6 @@ export function SetupStep(props: SetupStepProps) {
       <div className="space-y-2">
         <h3 className="text-lg font-semibold text-slate-900">Add everyone&apos;s names</h3>
         <hr className="border-slate-200/90" />
-      </div>
-
-      <div className="space-y-2">
-        <h3 className="text-lg font-semibold text-slate-900">Voice input test (no API call)</h3>
-        <hr className="border-slate-200/90" />
-      </div>
-
-      <div className="soft-card rounded-2xl p-5">
-        <label className="block space-y-2">
-          <span className="text-sm font-medium text-slate-700">Local voice test box</span>
-          <div className="relative">
-            <textarea
-              value={voiceTestText}
-              onChange={(event) => setVoiceTestText(event.target.value)}
-              rows={4}
-              placeholder="Speak here to test mic behavior without parsing receipts."
-              className="input-field min-h-24 resize-y pb-14 pr-14"
-            />
-            <button
-              type="button"
-              onClick={isVoiceTestListening ? stopVoiceTestInput : startVoiceTestInput}
-              disabled={!isVoiceTestSupported}
-              aria-label={isVoiceTestListening ? "Stop microphone input" : "Start microphone input"}
-              title={isVoiceTestListening ? "Stop microphone" : "Use microphone"}
-              className={`absolute bottom-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full border transition ${
-                isVoiceTestListening
-                  ? "animate-pulse border-rose-400 bg-rose-500 text-white"
-                  : "border-slate-300 bg-white text-slate-600 hover:border-slate-400 hover:text-slate-800"
-              } disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400`}
-            >
-              <MicIcon className="h-4 w-4" />
-            </button>
-          </div>
-          <p className="text-xs text-slate-500">
-            {isVoiceTestSupported
-              ? isVoiceTestListening
-                ? "Listening now. Stops automatically after inactivity."
-                : "Tap the mic to test dictation and ping sounds."
-              : "Voice input is unavailable in this browser."}
-          </p>
-          {voiceTestError && <p className="text-xs text-amber-700">{voiceTestError}</p>}
-        </label>
       </div>
 
       <div className="soft-card rounded-2xl p-5">
