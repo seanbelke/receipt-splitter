@@ -803,7 +803,7 @@ export default function HomePage() {
     clearVoiceInactivityTimeout();
     voiceInactivityTimeoutRef.current = window.setTimeout(() => {
       chatContextRecognitionRef.current?.stop();
-    }, 1000);
+    }, 1800);
   }
 
   function resetVoiceTestInactivityTimeout() {
@@ -813,7 +813,7 @@ export default function HomePage() {
     clearVoiceTestInactivityTimeout();
     voiceTestInactivityTimeoutRef.current = window.setTimeout(() => {
       voiceTestRecognitionRef.current?.stop();
-    }, 1000);
+    }, 1800);
   }
 
   function finalizeVoiceSession() {
