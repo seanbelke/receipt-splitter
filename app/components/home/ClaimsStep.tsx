@@ -4,7 +4,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import { ChangeEvent } from "react";
 import { AssignableUnit, ChatClaimsPrefill, ClaimConfidence } from "@/lib/types";
 import { moneyFromCents } from "@/lib/split";
-import { AssignIcon, ChatIcon, TrashIcon, UploadIcon } from "./icons";
+import { AssignIcon, ChatIcon, MicIcon, TrashIcon, UploadIcon } from "./icons";
 
 type Suggestion = {
   unitId: string;
@@ -181,35 +181,39 @@ export function ClaimsStep(props: ClaimsStepProps) {
 
       <label className="block space-y-2">
         <span className="text-sm font-medium text-slate-700">Extra context for the AI (optional)</span>
-        <textarea
-          value={chatClaimsContext}
-          onChange={(event) => setChatClaimsContext(event.target.value)}
-          rows={4}
-          placeholder={`Examples:\n- I am [name]\n- '[nickname]' is [full name]\n- [name] got [item]`}
-          className="input-field min-h-28 resize-y"
-        />
-        <p className="text-xs text-slate-500">
-          Use this to clarify identities, nicknames, or extra item claims not obvious from screenshots.
-        </p>
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <Button
+        <div className="relative">
+          <textarea
+            value={chatClaimsContext}
+            onChange={(event) => setChatClaimsContext(event.target.value)}
+            rows={4}
+            placeholder={`Examples:\n- I am [name]\n- '[nickname]' is [full name]\n- [name] got [item]`}
+            className="input-field min-h-28 resize-y pb-14 pr-14"
+          />
+          <button
             type="button"
             onClick={isVoiceContextListening ? stopVoiceContextInput : startVoiceContextInput}
             disabled={!isVoiceContextSupported}
-            className={`px-3 py-1 text-xs font-semibold ${
-              isVoiceContextListening ? "primary-btn" : "secondary-btn"
-            } disabled:cursor-not-allowed disabled:opacity-40`}
+            aria-label={isVoiceContextListening ? "Stop microphone input" : "Start microphone input"}
+            title={isVoiceContextListening ? "Stop microphone" : "Use microphone"}
+            className={`absolute bottom-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full border transition ${
+              isVoiceContextListening
+                ? "animate-pulse border-rose-400 bg-rose-500 text-white"
+                : "border-slate-300 bg-white text-slate-600 hover:border-slate-400 hover:text-slate-800"
+            } disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400`}
           >
-            {isVoiceContextListening ? "Stop microphone" : "Use microphone (Chrome)"}
-          </Button>
-          <p className="text-xs text-slate-500">
-            {isVoiceContextSupported
-              ? isVoiceContextListening
-                ? "Listening now. Speech is converted into editable text."
-                : "Tap to dictate extra context."
-              : "Voice input is unavailable in this browser."}
-          </p>
+            <MicIcon className="h-4 w-4" />
+          </button>
         </div>
+        <p className="text-xs text-slate-500">
+          Use this to clarify identities, nicknames, or extra item claims not obvious from screenshots.
+        </p>
+        <p className="text-xs text-slate-500">
+          {isVoiceContextSupported
+            ? isVoiceContextListening
+              ? "Listening now. Tap the mic again to stop."
+              : "Tap the mic in the text box to dictate."
+            : "Voice input is unavailable in this browser."}
+        </p>
         {voiceContextError && <p className="text-xs text-amber-700">{voiceContextError}</p>}
       </label>
 
