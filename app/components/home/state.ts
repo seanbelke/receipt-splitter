@@ -35,6 +35,10 @@ export type HomeState = {
   isImagePreviewOpen: boolean;
   chatScreenshots: File[];
   chatClaimsContext: string;
+  voiceTestText: string;
+  isVoiceTestSupported: boolean;
+  isVoiceTestListening: boolean;
+  voiceTestError: string | null;
   isVoiceContextSupported: boolean;
   isVoiceContextListening: boolean;
   voiceContextError: string | null;
@@ -71,6 +75,10 @@ export const initialHomeState: HomeState = {
   isImagePreviewOpen: false,
   chatScreenshots: [],
   chatClaimsContext: "",
+  voiceTestText: "",
+  isVoiceTestSupported: false,
+  isVoiceTestListening: false,
+  voiceTestError: null,
   isVoiceContextSupported: false,
   isVoiceContextListening: false,
   voiceContextError: null,

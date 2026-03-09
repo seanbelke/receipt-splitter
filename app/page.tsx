@@ -261,6 +261,10 @@ export default function HomePage() {
     isImagePreviewOpen,
     chatScreenshots,
     chatClaimsContext,
+    voiceTestText,
+    isVoiceTestSupported,
+    isVoiceTestListening,
+    voiceTestError,
     chatScreenshotPreviewUrls,
     chatClaimsPrefill,
     chatFollowUpDraft,
@@ -277,8 +281,11 @@ export default function HomePage() {
   const newPersonInputRef = useRef<HTMLInputElement>(null);
   const assignContentPanelRef = useRef<HTMLDivElement>(null);
   const chatContextRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const voiceTestRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const voiceSessionEndedRef = useRef(false);
   const voiceInactivityTimeoutRef = useRef<number | null>(null);
+  const voiceTestSessionEndedRef = useRef(false);
+  const voiceTestInactivityTimeoutRef = useRef<number | null>(null);
 
   function setField<K extends keyof HomeState>(
     key: K,
@@ -337,6 +344,18 @@ export default function HomePage() {
   const setChatClaimsContext = (
     value: string | ((prev: string) => string),
   ) => setField("chatClaimsContext", value);
+  const setVoiceTestText = (
+    value: string | ((prev: string) => string),
+  ) => setField("voiceTestText", value);
+  const setIsVoiceTestSupported = (
+    value: boolean | ((prev: boolean) => boolean),
+  ) => setField("isVoiceTestSupported", value);
+  const setIsVoiceTestListening = (
+    value: boolean | ((prev: boolean) => boolean),
+  ) => setField("isVoiceTestListening", value);
+  const setVoiceTestError = (
+    value: string | null | ((prev: string | null) => string | null),
+  ) => setField("voiceTestError", value);
   const setChatClaimsPrefill = (
     value:
       | ChatClaimsPrefill
@@ -567,6 +586,7 @@ export default function HomePage() {
     const constructor =
       window.SpeechRecognition ?? window.webkitSpeechRecognition;
     dispatch(setHomeField("isVoiceContextSupported", Boolean(constructor)));
+    dispatch(setHomeField("isVoiceTestSupported", Boolean(constructor)));
   }, [dispatch]);
 
   useEffect(() => {
@@ -577,9 +597,18 @@ export default function HomePage() {
   }, [step]);
 
   useEffect(() => {
+    if (step === "setup") {
+      return;
+    }
+    voiceTestRecognitionRef.current?.stop();
+  }, [step]);
+
+  useEffect(() => {
     return () => {
       chatContextRecognitionRef.current?.stop();
       clearVoiceInactivityTimeout();
+      voiceTestRecognitionRef.current?.stop();
+      clearVoiceTestInactivityTimeout();
     };
   }, []);
 
@@ -759,6 +788,14 @@ export default function HomePage() {
     voiceInactivityTimeoutRef.current = null;
   }
 
+  function clearVoiceTestInactivityTimeout() {
+    if (voiceTestInactivityTimeoutRef.current === null || typeof window === "undefined") {
+      return;
+    }
+    window.clearTimeout(voiceTestInactivityTimeoutRef.current);
+    voiceTestInactivityTimeoutRef.current = null;
+  }
+
   function resetVoiceInactivityTimeout() {
     if (typeof window === "undefined") {
       return;
@@ -769,6 +806,16 @@ export default function HomePage() {
     }, 1800);
   }
 
+  function resetVoiceTestInactivityTimeout() {
+    if (typeof window === "undefined") {
+      return;
+    }
+    clearVoiceTestInactivityTimeout();
+    voiceTestInactivityTimeoutRef.current = window.setTimeout(() => {
+      voiceTestRecognitionRef.current?.stop();
+    }, 1800);
+  }
+
   function finalizeVoiceSession() {
     if (voiceSessionEndedRef.current) {
       return;
@@ -776,6 +823,16 @@ export default function HomePage() {
     voiceSessionEndedRef.current = true;
     clearVoiceInactivityTimeout();
     setIsVoiceContextListening(false);
+    playMicPing("stop");
+  }
+
+  function finalizeVoiceTestSession() {
+    if (voiceTestSessionEndedRef.current) {
+      return;
+    }
+    voiceTestSessionEndedRef.current = true;
+    clearVoiceTestInactivityTimeout();
+    setIsVoiceTestListening(false);
     playMicPing("stop");
   }
 
@@ -827,6 +884,66 @@ export default function HomePage() {
     return recognition;
   }
 
+  function appendVoiceTestTranscript(transcript: string) {
+    const cleaned = transcript.trim();
+    if (cleaned.length === 0) {
+      return;
+    }
+    setVoiceTestText((prev) =>
+      prev.trim().length === 0
+        ? cleaned
+        : `${prev}${/[\s\n]$/.test(prev) ? "" : " "}${cleaned}`,
+    );
+  }
+
+  function ensureVoiceTestRecognition(): BrowserSpeechRecognition | null {
+    if (voiceTestRecognitionRef.current) {
+      return voiceTestRecognitionRef.current;
+    }
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    const constructor =
+      window.SpeechRecognition ?? window.webkitSpeechRecognition;
+    if (!constructor) {
+      return null;
+    }
+
+    const recognition = new constructor();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+    recognition.onresult = (event) => {
+      let finalTranscript = "";
+      resetVoiceTestInactivityTimeout();
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const result = event.results[i];
+        if (!result.isFinal) {
+          continue;
+        }
+        finalTranscript += result[0]?.transcript ?? "";
+      }
+      appendVoiceTestTranscript(finalTranscript);
+    };
+    recognition.onerror = (event) => {
+      const friendlyError =
+        event.error === "not-allowed"
+          ? "Microphone permission was denied."
+          : event.error === "no-speech"
+            ? "No speech was detected. Try again."
+            : `Voice input failed (${event.error}).`;
+      setVoiceTestError(friendlyError);
+      finalizeVoiceTestSession();
+    };
+    recognition.onend = () => {
+      finalizeVoiceTestSession();
+    };
+
+    voiceTestRecognitionRef.current = recognition;
+    return recognition;
+  }
+
   function startVoiceContextInput() {
     const recognition = ensureChatContextRecognition();
     if (!recognition) {
@@ -853,6 +970,34 @@ export default function HomePage() {
   function stopVoiceContextInput() {
     chatContextRecognitionRef.current?.stop();
     finalizeVoiceSession();
+  }
+
+  function startVoiceTestInput() {
+    const recognition = ensureVoiceTestRecognition();
+    if (!recognition) {
+      setVoiceTestError("Voice input is only available in supported Chrome browsers.");
+      setIsVoiceTestSupported(false);
+      return;
+    }
+
+    setVoiceTestError(null);
+    try {
+      voiceTestSessionEndedRef.current = false;
+      recognition.start();
+      setIsVoiceTestListening(true);
+      playMicPing("start");
+      resetVoiceTestInactivityTimeout();
+    } catch {
+      setVoiceTestError("Unable to start microphone capture.");
+      voiceTestSessionEndedRef.current = true;
+      clearVoiceTestInactivityTimeout();
+      setIsVoiceTestListening(false);
+    }
+  }
+
+  function stopVoiceTestInput() {
+    voiceTestRecognitionRef.current?.stop();
+    finalizeVoiceTestSession();
   }
 
   async function startReceiptParse() {
@@ -1387,6 +1532,10 @@ export default function HomePage() {
               taxCents,
               tipCents,
               editingItemRowIndex,
+              voiceTestText,
+              isVoiceTestSupported,
+              isVoiceTestListening,
+              voiceTestError,
             }}
             refs={{
               fileInputRef,
@@ -1403,6 +1552,9 @@ export default function HomePage() {
               setTipCents,
               updateReceiptItem,
               setEditingItemRowIndex,
+              setVoiceTestText,
+              startVoiceTestInput,
+              stopVoiceTestInput,
               openImagePreview: () => setIsImagePreviewOpen(true),
             }}
             goToClaims={() => setStep("claims")}
