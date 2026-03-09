@@ -278,6 +278,7 @@ export default function HomePage() {
   const assignContentPanelRef = useRef<HTMLDivElement>(null);
   const chatContextRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const voiceSessionEndedRef = useRef(false);
+  const voiceInactivityTimeoutRef = useRef<number | null>(null);
 
   function setField<K extends keyof HomeState>(
     key: K,
@@ -578,6 +579,7 @@ export default function HomePage() {
   useEffect(() => {
     return () => {
       chatContextRecognitionRef.current?.stop();
+      clearVoiceInactivityTimeout();
     };
   }, []);
 
@@ -749,11 +751,30 @@ export default function HomePage() {
     }
   }
 
+  function clearVoiceInactivityTimeout() {
+    if (voiceInactivityTimeoutRef.current === null || typeof window === "undefined") {
+      return;
+    }
+    window.clearTimeout(voiceInactivityTimeoutRef.current);
+    voiceInactivityTimeoutRef.current = null;
+  }
+
+  function resetVoiceInactivityTimeout() {
+    if (typeof window === "undefined") {
+      return;
+    }
+    clearVoiceInactivityTimeout();
+    voiceInactivityTimeoutRef.current = window.setTimeout(() => {
+      chatContextRecognitionRef.current?.stop();
+    }, 3000);
+  }
+
   function finalizeVoiceSession() {
     if (voiceSessionEndedRef.current) {
       return;
     }
     voiceSessionEndedRef.current = true;
+    clearVoiceInactivityTimeout();
     setIsVoiceContextListening(false);
     playMicPing("stop");
   }
@@ -774,10 +795,11 @@ export default function HomePage() {
 
     const recognition = new constructor();
     recognition.continuous = true;
-    recognition.interimResults = false;
+    recognition.interimResults = true;
     recognition.lang = "en-US";
     recognition.onresult = (event) => {
       let finalTranscript = "";
+      resetVoiceInactivityTimeout();
       for (let i = event.resultIndex; i < event.results.length; i += 1) {
         const result = event.results[i];
         if (!result.isFinal) {
@@ -819,9 +841,11 @@ export default function HomePage() {
       recognition.start();
       setIsVoiceContextListening(true);
       playMicPing("start");
+      resetVoiceInactivityTimeout();
     } catch {
       setVoiceContextError("Unable to start microphone capture.");
       voiceSessionEndedRef.current = true;
+      clearVoiceInactivityTimeout();
       setIsVoiceContextListening(false);
     }
   }
