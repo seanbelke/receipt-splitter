@@ -277,6 +277,7 @@ export default function HomePage() {
   const newPersonInputRef = useRef<HTMLInputElement>(null);
   const assignContentPanelRef = useRef<HTMLDivElement>(null);
   const chatContextRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const voiceSessionEndedRef = useRef(false);
 
   function setField<K extends keyof HomeState>(
     key: K,
@@ -713,6 +714,50 @@ export default function HomePage() {
     );
   }
 
+  function playMicPing(kind: "start" | "stop") {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      const AudioContextCtor = window.AudioContext;
+      if (!AudioContextCtor) {
+        return;
+      }
+
+      const context = new AudioContextCtor();
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      const now = context.currentTime;
+
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(kind === "start" ? 1180 : 780, now);
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.12, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.11);
+
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(now);
+      oscillator.stop(now + 0.12);
+      oscillator.onended = () => {
+        void context.close();
+      };
+    } catch {
+      // Best effort only; skip sound if audio context fails.
+    }
+  }
+
+  function finalizeVoiceSession() {
+    if (voiceSessionEndedRef.current) {
+      return;
+    }
+    voiceSessionEndedRef.current = true;
+    setIsVoiceContextListening(false);
+    playMicPing("stop");
+  }
+
   function ensureChatContextRecognition(): BrowserSpeechRecognition | null {
     if (chatContextRecognitionRef.current) {
       return chatContextRecognitionRef.current;
@@ -750,10 +795,10 @@ export default function HomePage() {
             ? "No speech was detected. Try again."
             : `Voice input failed (${event.error}).`;
       setVoiceContextError(friendlyError);
-      setIsVoiceContextListening(false);
+      finalizeVoiceSession();
     };
     recognition.onend = () => {
-      setIsVoiceContextListening(false);
+      finalizeVoiceSession();
     };
 
     chatContextRecognitionRef.current = recognition;
@@ -770,17 +815,20 @@ export default function HomePage() {
 
     setVoiceContextError(null);
     try {
+      voiceSessionEndedRef.current = false;
       recognition.start();
       setIsVoiceContextListening(true);
+      playMicPing("start");
     } catch {
       setVoiceContextError("Unable to start microphone capture.");
+      voiceSessionEndedRef.current = true;
       setIsVoiceContextListening(false);
     }
   }
 
   function stopVoiceContextInput() {
     chatContextRecognitionRef.current?.stop();
-    setIsVoiceContextListening(false);
+    finalizeVoiceSession();
   }
 
   async function startReceiptParse() {
