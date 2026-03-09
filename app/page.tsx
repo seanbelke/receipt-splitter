@@ -16,6 +16,7 @@ import {
   expandItemsToUnits,
   moneyFromCents,
 } from "@/lib/split";
+import punctuate from "punctuation-name2symbol";
 import {
   AssignableUnit,
   ChatClaimsPrefill,
@@ -237,6 +238,21 @@ function buildHtmlReport(params: {
   </div>
 </body>
 </html>`;
+}
+
+function normalizeDictationTranscript(transcript: string): string {
+  const withLineBreaks = transcript
+    .replace(/\bnew paragraph\b/gi, "\n\n")
+    .replace(/\bnew line\b/gi, "\n");
+  const punctuated = punctuate({
+    text: withLineBreaks,
+    capitalize: false,
+  });
+
+  return punctuated
+    .replace(/[ \t]+([,.;:!?])/g, "$1")
+    .replace(/([,.;:!?])([A-Za-z])/g, "$1 $2")
+    .replace(/[ \t]{2,}/g, " ");
 }
 
 export default function HomePage() {
@@ -734,7 +750,7 @@ export default function HomePage() {
   }
 
   function appendVoiceTranscript(transcript: string) {
-    const cleaned = transcript.trim();
+    const cleaned = normalizeDictationTranscript(transcript).trim();
     if (cleaned.length === 0) {
       return;
     }
@@ -885,7 +901,7 @@ export default function HomePage() {
   }
 
   function appendVoiceTestTranscript(transcript: string) {
-    const cleaned = transcript.trim();
+    const cleaned = normalizeDictationTranscript(transcript).trim();
     if (cleaned.length === 0) {
       return;
     }
