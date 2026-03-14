@@ -11,7 +11,7 @@ import {
 import Alert from "@mui/material/Alert";
 import Container from "@mui/material/Container";
 import Paper from "@mui/material/Paper";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   calculateSplitBreakdown,
   expandItemsToUnits,
@@ -44,6 +44,7 @@ import {
 } from "@/app/components/home/types";
 import {
   HomeState,
+  createHomeStateFromUsageSnapshot,
   homeReducer,
   initialHomeState,
   setHomeField,
@@ -264,13 +265,32 @@ function stepIndex(step: Step): number {
 
 type SplitPageClientProps = {
   initialUsageId: string | null;
+  initialUsageSnapshot: UsageSnapshot | null;
+  initialLoadError: string | null;
 };
 
-export default function SplitPageClient({ initialUsageId }: SplitPageClientProps) {
-  const [state, dispatch] = useReducer(homeReducer, initialHomeState);
+function initializeState(props: SplitPageClientProps): HomeState {
+  if (props.initialUsageId && props.initialUsageSnapshot) {
+    return createHomeStateFromUsageSnapshot(
+      props.initialUsageId,
+      props.initialUsageSnapshot,
+    );
+  }
+
+  if (props.initialLoadError) {
+    return {
+      ...initialHomeState,
+      error: props.initialLoadError,
+    };
+  }
+
+  return initialHomeState;
+}
+
+export default function SplitPageClient(props: SplitPageClientProps) {
+  const [state, dispatch] = useReducer(homeReducer, props, initializeState);
   const {
     usageId,
-    isHydratingUsage,
     step,
     maxUnlockedStep,
     file,
@@ -304,16 +324,12 @@ export default function SplitPageClient({ initialUsageId }: SplitPageClientProps
     editingItemRowIndex,
   } = state;
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const requestedUsageId =
-    searchParams.get("usageId")?.trim() || initialUsageId;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const newPersonInputRef = useRef<HTMLInputElement>(null);
   const assignContentPanelRef = useRef<HTMLDivElement>(null);
   const chatContextRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const voiceSessionEndedRef = useRef(false);
   const voiceInactivityTimeoutRef = useRef<number | null>(null);
-  const lastLoadedUsageIdRef = useRef<string | null>(null);
   const lastSavedSnapshotRef = useRef<string | null>(null);
   const saveUsageTimeoutRef = useRef<number | null>(null);
 
@@ -524,8 +540,6 @@ export default function SplitPageClient({ initialUsageId }: SplitPageClientProps
     [chatClaimsPrefill],
   );
   const currentUnitAIPrefill = currentUnit ? aiPrefillByUnit[currentUnit.id] : null;
-  const showHydrationScreen =
-    isHydratingUsage && !!requestedUsageId && requestedUsageId !== usageId;
   const usageSnapshot = useMemo<UsageSnapshot | null>(() => {
     if (!receipt) {
       return null;
@@ -653,61 +667,10 @@ export default function SplitPageClient({ initialUsageId }: SplitPageClientProps
   }, []);
 
   useEffect(() => {
-    if (!requestedUsageId) {
-      lastLoadedUsageIdRef.current = null;
-      dispatch(setHomeField("isHydratingUsage", false));
-      return;
+    if (props.initialUsageSnapshot) {
+      lastSavedSnapshotRef.current = JSON.stringify(props.initialUsageSnapshot);
     }
-    if (lastLoadedUsageIdRef.current === requestedUsageId) {
-      return;
-    }
-
-    let cancelled = false;
-    lastLoadedUsageIdRef.current = requestedUsageId;
-    dispatch(setHomeField("isHydratingUsage", true));
-    dispatch(setHomeField("error", null));
-
-    void (async () => {
-      try {
-        const res = await fetch(`/api/usages/${requestedUsageId}`);
-        const payload = await res.json();
-        if (!res.ok) {
-          throw new Error(payload.error || "Failed to load saved receipt.");
-        }
-
-        const usage = payload.usage as UsageHistoryRecord;
-        if (cancelled) {
-          return;
-        }
-
-        dispatch({
-          type: "LOAD_USAGE_SNAPSHOT",
-          usageId: usage.id,
-          snapshot: usage.snapshot,
-        });
-        lastSavedSnapshotRef.current = JSON.stringify(usage.snapshot);
-      } catch (err) {
-        if (cancelled) {
-          return;
-        }
-        lastLoadedUsageIdRef.current = null;
-        dispatch(
-          setHomeField(
-            "error",
-            err instanceof Error ? err.message : "Failed to load saved receipt.",
-          ),
-        );
-      } finally {
-        if (!cancelled) {
-          dispatch(setHomeField("isHydratingUsage", false));
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [requestedUsageId]);
+  }, [props.initialUsageSnapshot]);
 
   useEffect(() => {
     return () => {
@@ -757,8 +720,7 @@ export default function SplitPageClient({ initialUsageId }: SplitPageClientProps
           const savedUsage = payload.usage as UsageHistoryRecord;
           lastSavedSnapshotRef.current = JSON.stringify(savedUsage.snapshot);
           dispatch(setHomeField("usageId", savedUsage.id));
-          if (requestedUsageId !== savedUsage.id) {
-            lastLoadedUsageIdRef.current = savedUsage.id;
+          if (usageId !== savedUsage.id) {
             router.replace(`/split?usageId=${savedUsage.id}`, {
               scroll: false,
             });
@@ -783,7 +745,6 @@ export default function SplitPageClient({ initialUsageId }: SplitPageClientProps
   }, [
     allItemsAssigned,
     people.length,
-    requestedUsageId,
     router,
     step,
     usageId,
@@ -1599,16 +1560,6 @@ export default function SplitPageClient({ initialUsageId }: SplitPageClientProps
             {error}
           </Alert>
         )}
-        {showHydrationScreen ? (
-          <div className="rounded-2xl border border-slate-200/80 bg-white/80 px-5 py-10 text-center">
-            <p className="step-kicker">Loading</p>
-            <h2 className="mt-2 text-2xl font-semibold text-slate-950">Restoring saved receipt</h2>
-            <p className="mt-2 text-sm text-slate-600">
-              Pulling the saved snapshot from local history and rebuilding the splitter state.
-            </p>
-          </div>
-        ) : (
-          <>
         {usageId && (
           <div className="mb-4 rounded-2xl border border-teal-200/80 bg-teal-50/75 px-4 py-3 text-sm text-teal-900">
             Editing saved receipt <span className="mono">{usageId}</span>. Changes are saved automatically once
@@ -1757,8 +1708,6 @@ export default function SplitPageClient({ initialUsageId }: SplitPageClientProps
             totals={totals}
             openHtmlReportPreview={openHtmlReportPreview}
           />
-        )}
-          </>
         )}
       </Paper>
 

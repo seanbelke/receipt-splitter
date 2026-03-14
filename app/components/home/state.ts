@@ -224,6 +224,41 @@ function withClearAiClaimMetadata(state: HomeState): HomeState {
   };
 }
 
+export function createHomeStateFromUsageSnapshot(
+  usageId: string,
+  snapshot: LoadUsageSnapshotAction["snapshot"],
+): HomeState {
+  const units = expandItemsToUnits(snapshot.receipt);
+  const validUnitIds = new Set(units.map((unit) => unit.id));
+  const assignments = Object.fromEntries(
+    Object.entries(snapshot.assignments).map(([unitId, names]) => [
+      unitId,
+      validUnitIds.has(unitId)
+        ? Array.from(new Set(names.filter((name) => snapshot.people.includes(name))))
+        : [],
+    ]),
+  );
+  const maxUnlockedStep = getMaxUnlockedStep({
+    ...snapshot,
+    assignments,
+  });
+
+  return {
+    ...initialHomeState,
+    usageId,
+    isHydratingUsage: false,
+    error: null,
+    receipt: snapshot.receipt,
+    units,
+    people: snapshot.people,
+    assignments,
+    taxCents: snapshot.taxCents,
+    tipCents: snapshot.tipCents,
+    step: "setup",
+    maxUnlockedStep,
+  };
+}
+
 export function homeReducer(state: HomeState, action: HomeAction): HomeState {
   switch (action.type) {
     case "SET_FIELD": {
@@ -269,37 +304,8 @@ export function homeReducer(state: HomeState, action: HomeAction): HomeState {
       return withClearChatClaimInputs(state);
     case "CLEAR_AI_CLAIM_METADATA":
       return withClearAiClaimMetadata(state);
-    case "LOAD_USAGE_SNAPSHOT": {
-      const units = expandItemsToUnits(action.snapshot.receipt);
-      const validUnitIds = new Set(units.map((unit) => unit.id));
-      const assignments = Object.fromEntries(
-        Object.entries(action.snapshot.assignments).map(([unitId, names]) => [
-          unitId,
-          validUnitIds.has(unitId)
-            ? Array.from(new Set(names.filter((name) => action.snapshot.people.includes(name))))
-            : [],
-        ]),
-      );
-      const maxUnlockedStep = getMaxUnlockedStep({
-        ...action.snapshot,
-        assignments,
-      });
-
-      return {
-        ...initialHomeState,
-        usageId: action.usageId,
-        isHydratingUsage: false,
-        error: null,
-        receipt: action.snapshot.receipt,
-        units,
-        people: action.snapshot.people,
-        assignments,
-        taxCents: action.snapshot.taxCents,
-        tipCents: action.snapshot.tipCents,
-        step: "setup",
-        maxUnlockedStep,
-      };
-    }
+    case "LOAD_USAGE_SNAPSHOT":
+      return createHomeStateFromUsageSnapshot(action.usageId, action.snapshot);
     default:
       return state;
   }
