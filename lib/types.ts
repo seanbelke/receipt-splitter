@@ -82,3 +82,23 @@ export type ChatClaimsPrefill = {
   round: number;
   maxRounds: number;
 };
+
+export type UsageSnapshot = {
+  receipt: ParsedReceipt;
+  people: string[];
+  assignments: Record<string, string[]>;
+  taxCents: number;
+  tipCents: number;
+};
+
+export type UsageHistoryEntry = {
+  id: string;
+  restaurantName: string | null;
+  totalCents: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type UsageHistoryRecord = UsageHistoryEntry & {
+  snapshot: UsageSnapshot;
+};
