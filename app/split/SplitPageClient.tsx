@@ -11,7 +11,7 @@ import {
 import Alert from "@mui/material/Alert";
 import Container from "@mui/material/Container";
 import Paper from "@mui/material/Paper";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   calculateSplitBreakdown,
   expandItemsToUnits,
@@ -304,7 +304,9 @@ export default function SplitPageClient({ initialUsageId }: SplitPageClientProps
     editingItemRowIndex,
   } = state;
   const router = useRouter();
-  const requestedUsageId = initialUsageId;
+  const searchParams = useSearchParams();
+  const requestedUsageId =
+    searchParams.get("usageId")?.trim() || initialUsageId;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const newPersonInputRef = useRef<HTMLInputElement>(null);
   const assignContentPanelRef = useRef<HTMLDivElement>(null);
