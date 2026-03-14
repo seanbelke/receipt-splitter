@@ -1804,19 +1804,65 @@ export default function SplitPageClient(props: SplitPageClientProps) {
         file={file}
         onClose={() => setIsImagePreviewOpen(false)}
       />
-      <Dialog open={isLeaveDialogOpen} onClose={() => setIsLeaveDialogOpen(false)}>
-        <DialogTitle>Leave split?</DialogTitle>
-        <DialogContent>
-          You have unsaved changes. Save them before returning to the home page, or discard them.
+      <Dialog
+        open={isLeaveDialogOpen}
+        onClose={() => setIsLeaveDialogOpen(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: 4,
+            overflow: "hidden",
+            border: "1px solid rgba(148, 163, 184, 0.28)",
+            background:
+              "linear-gradient(165deg, rgba(255,255,255,0.98), rgba(248,251,255,0.96))",
+            boxShadow: "0 34px 80px -42px rgba(15, 23, 42, 0.48)",
+            minWidth: { sm: 540 },
+          },
+        }}
+      >
+        <DialogTitle sx={{ p: 0 }}>
+          <div className="border-b border-slate-200/80 px-6 py-5">
+            <p className="step-kicker text-[0.68rem]">Unsaved changes</p>
+            <h3 className="mt-2 text-[1.9rem] font-semibold tracking-tight text-slate-950">
+              Leave this split?
+            </h3>
+          </div>
+        </DialogTitle>
+        <DialogContent sx={{ px: 6, py: 4 }}>
+          <p className="text-base leading-8 text-slate-700">
+            You have edits that are only in your current session. Save them before returning home, or
+            discard them and keep the last saved version.
+          </p>
+          <div className="mt-4 rounded-2xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-sm text-amber-900">
+            Discarding will leave this split in its last saved state.
+          </div>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsLeaveDialogOpen(false)}>Cancel</Button>
-          <Button color="inherit" onClick={discardAndGoHome}>
-            Discard changes
+        <DialogActions
+          sx={{
+            px: 6,
+            py: 3,
+            borderTop: "1px solid rgba(226, 232, 240, 0.9)",
+            display: "flex",
+            flexDirection: { xs: "column-reverse", sm: "row" },
+            justifyContent: "space-between",
+            alignItems: { xs: "stretch", sm: "center" },
+            gap: 1.5,
+          }}
+        >
+          <Button onClick={() => setIsLeaveDialogOpen(false)} className="secondary-btn px-4 py-2.5">
+            Keep editing
           </Button>
-          <Button onClick={() => void saveAndGoHome()} variant="contained">
-            Save and leave
-          </Button>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row">
+            <Button
+              color="inherit"
+              onClick={discardAndGoHome}
+              className="rounded-xl border border-slate-200 px-4 py-2.5 text-slate-600"
+            >
+              Discard changes
+            </Button>
+            <Button onClick={() => void saveAndGoHome()} className="primary-btn px-4 py-2.5">
+              Save and leave
+            </Button>
+          </div>
         </DialogActions>
       </Dialog>
     </Container>
