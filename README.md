@@ -35,6 +35,8 @@ npm run dev
 
 Then open [http://localhost:3000](http://localhost:3000).
 
+Saved receipt history is stored locally in `data/receipt-splitter.db`.
+
 ## Testing
 
 ```bash

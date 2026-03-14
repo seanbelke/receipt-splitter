@@ -1,3 +1,4 @@
+import { expandItemsToUnits } from "@/lib/split";
 import { AssignableUnit, ChatClaimsPrefill, ClaimConfidence, ParsedReceipt } from "@/lib/types";
 import { AIPrefillDetail, AssignMode, FollowUpAnswer, Step } from "./types";
 
@@ -16,6 +17,8 @@ function defaultConfidenceLevels(): Record<ClaimConfidence, boolean> {
 }
 
 export type HomeState = {
+  usageId: string | null;
+  isHydratingUsage: boolean;
   step: Step;
   maxUnlockedStep: Step;
   file: File | null;
@@ -53,6 +56,8 @@ export type HomeState = {
 };
 
 export const initialHomeState: HomeState = {
+  usageId: null,
+  isHydratingUsage: false,
   step: "setup",
   maxUnlockedStep: "setup",
   file: null,
@@ -128,6 +133,18 @@ type ClearAiClaimMetadataAction = {
   type: "CLEAR_AI_CLAIM_METADATA";
 };
 
+type LoadUsageSnapshotAction = {
+  type: "LOAD_USAGE_SNAPSHOT";
+  usageId: string;
+  snapshot: {
+    receipt: ParsedReceipt;
+    people: string[];
+    assignments: Record<string, string[]>;
+    taxCents: number;
+    tipCents: number;
+  };
+};
+
 export type HomeAction =
   | SetFieldAction
   | ReceiptParseStartedAction
@@ -136,7 +153,8 @@ export type HomeAction =
   | ResetChatPrefillAction
   | ClearReceiptDataAction
   | ClearChatClaimInputsAction
-  | ClearAiClaimMetadataAction;
+  | ClearAiClaimMetadataAction
+  | LoadUsageSnapshotAction;
 
 export function setHomeField<K extends keyof HomeState>(
   key: K,
@@ -163,6 +181,7 @@ function withResetChatPrefill(state: HomeState): HomeState {
 function withClearReceiptData(state: HomeState): HomeState {
   return {
     ...state,
+    usageId: state.usageId,
     maxUnlockedStep: "setup",
     receipt: null,
     units: [],
@@ -181,6 +200,21 @@ function withClearChatClaimInputs(state: HomeState): HomeState {
     isVoiceContextListening: false,
     voiceContextError: null,
   };
+}
+
+function getMaxUnlockedStep(snapshot: LoadUsageSnapshotAction["snapshot"]): Step {
+  if (snapshot.people.length === 0) {
+    return "setup";
+  }
+
+  const allAssigned = expandItemsToUnits(snapshot.receipt).every(
+    (unit) => (snapshot.assignments[unit.id] ?? []).length > 0,
+  );
+  if (allAssigned) {
+    return "results";
+  }
+
+  return "assign";
 }
 
 function withClearAiClaimMetadata(state: HomeState): HomeState {
@@ -235,6 +269,35 @@ export function homeReducer(state: HomeState, action: HomeAction): HomeState {
       return withClearChatClaimInputs(state);
     case "CLEAR_AI_CLAIM_METADATA":
       return withClearAiClaimMetadata(state);
+    case "LOAD_USAGE_SNAPSHOT": {
+      const units = expandItemsToUnits(action.snapshot.receipt);
+      const validUnitIds = new Set(units.map((unit) => unit.id));
+      const assignments = Object.fromEntries(
+        Object.entries(action.snapshot.assignments).map(([unitId, names]) => [
+          unitId,
+          validUnitIds.has(unitId)
+            ? Array.from(new Set(names.filter((name) => action.snapshot.people.includes(name))))
+            : [],
+        ]),
+      );
+      const maxUnlockedStep = getMaxUnlockedStep({
+        ...action.snapshot,
+        assignments,
+      });
+
+      return {
+        ...initialHomeState,
+        usageId: action.usageId,
+        receipt: action.snapshot.receipt,
+        units,
+        people: action.snapshot.people,
+        assignments,
+        taxCents: action.snapshot.taxCents,
+        tipCents: action.snapshot.tipCents,
+        step: "setup",
+        maxUnlockedStep,
+      };
+    }
     default:
       return state;
   }
