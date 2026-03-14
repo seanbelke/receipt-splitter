@@ -7,9 +7,15 @@ import {
   useMemo,
   useReducer,
   useRef,
+  useState,
 } from "react";
 import Alert from "@mui/material/Alert";
+import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 import Paper from "@mui/material/Paper";
 import { useRouter } from "next/navigation";
 import {
@@ -263,6 +269,10 @@ function stepIndex(step: Step): number {
   return { setup: 1, claims: 2, assign: 3, results: 4 }[step];
 }
 
+function hasMeaningfulProgress(snapshot: UsageSnapshot | null): boolean {
+  return !!snapshot && snapshot.receipt.items.length > 0;
+}
+
 type SplitPageClientProps = {
   initialUsageId: string | null;
   initialUsageSnapshot: UsageSnapshot | null;
@@ -331,7 +341,7 @@ export default function SplitPageClient(props: SplitPageClientProps) {
   const voiceSessionEndedRef = useRef(false);
   const voiceInactivityTimeoutRef = useRef<number | null>(null);
   const lastSavedSnapshotRef = useRef<string | null>(null);
-  const saveUsageTimeoutRef = useRef<number | null>(null);
+  const isRegisteringDraftRef = useRef(false);
 
   function setField<K extends keyof HomeState>(
     key: K,
@@ -557,6 +567,12 @@ export default function SplitPageClient(props: SplitPageClientProps) {
     () => (usageSnapshot ? JSON.stringify(usageSnapshot) : null),
     [usageSnapshot],
   );
+  const hasUnsavedChanges =
+    usageSnapshotSignature !== null &&
+    usageSnapshotSignature !== lastSavedSnapshotRef.current;
+  const canRegisterProgress = hasMeaningfulProgress(usageSnapshot);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
   const currentPersonAIPrefills = useMemo(
     () =>
       units
@@ -673,84 +689,118 @@ export default function SplitPageClient(props: SplitPageClientProps) {
   }, [props.initialUsageSnapshot]);
 
   useEffect(() => {
-    return () => {
-      if (saveUsageTimeoutRef.current !== null) {
-        window.clearTimeout(saveUsageTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (
-      typeof window === "undefined" ||
-      step !== "results" ||
-      !usageSnapshot ||
-      !usageSnapshotSignature ||
-      people.length === 0 ||
-      !allItemsAssigned
-    ) {
+    if (!usageSnapshot || !usageSnapshotSignature || usageId || !canRegisterProgress) {
       return;
     }
-    if (lastSavedSnapshotRef.current === usageSnapshotSignature) {
+    if (isRegisteringDraftRef.current) {
       return;
     }
 
-    if (saveUsageTimeoutRef.current !== null) {
-      window.clearTimeout(saveUsageTimeoutRef.current);
-    }
+    isRegisteringDraftRef.current = true;
 
-    saveUsageTimeoutRef.current = window.setTimeout(() => {
-      void (async () => {
-        try {
-          const res = await fetch("/api/usages", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              id: usageId,
-              snapshot: usageSnapshot,
-            }),
-          });
-          const payload = await res.json();
-          if (!res.ok) {
-            throw new Error(payload.error || "Failed to save receipt history.");
-          }
-
-          const savedUsage = payload.usage as UsageHistoryRecord;
-          lastSavedSnapshotRef.current = JSON.stringify(savedUsage.snapshot);
-          dispatch(setHomeField("usageId", savedUsage.id));
-          if (usageId !== savedUsage.id) {
-            router.replace(`/split?usageId=${savedUsage.id}`, {
-              scroll: false,
-            });
-          }
-        } catch (err) {
-          dispatch(
-            setHomeField(
-              "error",
-              err instanceof Error ? err.message : "Failed to save receipt history.",
-            ),
-          );
+    void (async () => {
+      try {
+        const res = await fetch("/api/usages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            snapshot: usageSnapshot,
+          }),
+        });
+        const payload = await res.json();
+        if (!res.ok) {
+          throw new Error(payload.error || "Failed to register receipt history.");
         }
-      })();
-    }, 500);
 
-    return () => {
-      if (saveUsageTimeoutRef.current !== null) {
-        window.clearTimeout(saveUsageTimeoutRef.current);
-        saveUsageTimeoutRef.current = null;
+        const savedUsage = payload.usage as UsageHistoryRecord;
+        lastSavedSnapshotRef.current = JSON.stringify(savedUsage.snapshot);
+        dispatch(setHomeField("usageId", savedUsage.id));
+        router.replace(`/split?usageId=${savedUsage.id}`, {
+          scroll: false,
+        });
+      } catch (err) {
+        dispatch(
+          setHomeField(
+            "error",
+            err instanceof Error ? err.message : "Failed to register receipt history.",
+          ),
+        );
+      } finally {
+        isRegisteringDraftRef.current = false;
       }
-    };
-  }, [
-    allItemsAssigned,
-    people.length,
-    router,
-    step,
-    usageId,
-    usageSnapshot,
-    usageSnapshotSignature,
-  ]);
+    })();
+  }, [canRegisterProgress, router, usageId, usageSnapshot, usageSnapshotSignature]);
+
+  async function saveProgress() {
+    if (!usageSnapshot || !usageSnapshotSignature) {
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/usages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: usageId,
+          snapshot: usageSnapshot,
+        }),
+      });
+      const payload = await res.json();
+      if (!res.ok) {
+        throw new Error(payload.error || "Failed to save receipt history.");
+      }
+
+      const savedUsage = payload.usage as UsageHistoryRecord;
+      lastSavedSnapshotRef.current = JSON.stringify(savedUsage.snapshot);
+      dispatch(setHomeField("usageId", savedUsage.id));
+      dispatch(setHomeField("error", null));
+      if (usageId !== savedUsage.id) {
+        router.replace(`/split?usageId=${savedUsage.id}`, {
+          scroll: false,
+        });
+      }
+    } catch (err) {
+      dispatch(
+        setHomeField(
+          "error",
+          err instanceof Error ? err.message : "Failed to save receipt history.",
+        ),
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  function goHome() {
+    router.push("/");
+  }
+
+  async function onHomeClick() {
+    if (!hasUnsavedChanges) {
+      goHome();
+      return;
+    }
+
+    setIsLeaveDialogOpen(true);
+  }
+
+  async function saveAndGoHome() {
+    await saveProgress();
+    if (usageSnapshotSignature === lastSavedSnapshotRef.current) {
+      setIsLeaveDialogOpen(false);
+      goHome();
+    }
+  }
+
+  function discardAndGoHome() {
+    setIsLeaveDialogOpen(false);
+    goHome();
+  }
 
   useEffect(() => {
     if (!isImagePreviewOpen) {
@@ -1548,6 +1598,29 @@ export default function SplitPageClient(props: SplitPageClientProps) {
 
   return (
     <Container maxWidth="lg" sx={{ minHeight: "100vh", py: { xs: 4, sm: 6 } }}>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+          <Button onClick={onHomeClick} className="secondary-btn px-4 py-2">
+            Home
+          </Button>
+          {usageId && (
+            <span className="mono rounded-full bg-white/85 px-3 py-1 text-xs text-slate-500">
+              {usageId}
+            </span>
+          )}
+          <span className={hasUnsavedChanges ? "text-amber-700" : "text-teal-700"}>
+            {hasUnsavedChanges ? "Unsaved changes" : "All changes saved"}
+          </span>
+        </div>
+        <Button
+          onClick={() => void saveProgress()}
+          disabled={!canRegisterProgress || !hasUnsavedChanges || isSaving}
+          className="primary-btn px-5 py-2.5"
+        >
+          {isSaving ? "Saving..." : "Save"}
+        </Button>
+      </div>
+
       <ProgressHeader
         step={step}
         maxUnlockedStep={maxUnlockedStep}
@@ -1562,8 +1635,8 @@ export default function SplitPageClient(props: SplitPageClientProps) {
         )}
         {usageId && (
           <div className="mb-4 rounded-2xl border border-teal-200/80 bg-teal-50/75 px-4 py-3 text-sm text-teal-900">
-            Editing saved receipt <span className="mono">{usageId}</span>. Changes are saved automatically once
-            you reach results.
+            Editing saved receipt <span className="mono">{usageId}</span>. Save whenever you want to keep your
+            latest progress.
           </div>
         )}
         {step === "setup" && (
@@ -1731,6 +1804,21 @@ export default function SplitPageClient(props: SplitPageClientProps) {
         file={file}
         onClose={() => setIsImagePreviewOpen(false)}
       />
+      <Dialog open={isLeaveDialogOpen} onClose={() => setIsLeaveDialogOpen(false)}>
+        <DialogTitle>Leave split?</DialogTitle>
+        <DialogContent>
+          You have unsaved changes. Save them before returning to the home page, or discard them.
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsLeaveDialogOpen(false)}>Cancel</Button>
+          <Button color="inherit" onClick={discardAndGoHome}>
+            Discard changes
+          </Button>
+          <Button onClick={() => void saveAndGoHome()} variant="contained">
+            Save and leave
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }
