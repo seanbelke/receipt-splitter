@@ -288,6 +288,8 @@ export function homeReducer(state: HomeState, action: HomeAction): HomeState {
       return {
         ...initialHomeState,
         usageId: action.usageId,
+        isHydratingUsage: false,
+        error: null,
         receipt: action.snapshot.receipt,
         units,
         people: action.snapshot.people,

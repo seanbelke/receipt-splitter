@@ -520,6 +520,8 @@ function SplitPageClient() {
     [chatClaimsPrefill],
   );
   const currentUnitAIPrefill = currentUnit ? aiPrefillByUnit[currentUnit.id] : null;
+  const showHydrationScreen =
+    isHydratingUsage && !!requestedUsageId && requestedUsageId !== usageId;
   const usageSnapshot = useMemo<UsageSnapshot | null>(() => {
     if (!receipt) {
       return null;
@@ -1593,7 +1595,7 @@ function SplitPageClient() {
             {error}
           </Alert>
         )}
-        {isHydratingUsage ? (
+        {showHydrationScreen ? (
           <div className="rounded-2xl border border-slate-200/80 bg-white/80 px-5 py-10 text-center">
             <p className="step-kicker">Loading</p>
             <h2 className="mt-2 text-2xl font-semibold text-slate-950">Restoring saved receipt</h2>
